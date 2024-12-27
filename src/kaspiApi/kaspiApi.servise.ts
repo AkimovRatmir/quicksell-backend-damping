@@ -18,10 +18,10 @@ export class KaspiApiService {
     endDate: string,
     state: string,
     authToken: string,
-    organizationID: string, // Include organizationID
+    organizationID: string,
   ): Promise<any> {
     const url = 'https://kaspi.kz/shop/api/v2/orders';
-
+  
     const params = {
       'page[number]': 0,
       'page[size]': 100,
@@ -31,7 +31,7 @@ export class KaspiApiService {
       'filter[orders][signatureRequired]': 'true',
       'include[orders]': 'user',
     };
-
+  
     const config: AxiosRequestConfig = {
       headers: {
         'Content-Type': 'application/vnd.api+json',
@@ -40,21 +40,21 @@ export class KaspiApiService {
       },
       params,
     };
-
+  
     try {
       const response = await lastValueFrom(this.httpService.get(url, config));
       const orders: any[] = response.data.data;
-
+  
       const asyncLoaders = orders.map(async (order) => {
         const orderEntriesUrl = `https://kaspi.kz/shop/api/v2/orders/${order.id}/entries`;
         const entriesResponse = await lastValueFrom(
           this.httpService.get(orderEntriesUrl, config),
         );
-
-        // Save the entire response for each order entry, including organizationID
-        await this.saveToMongoDB(entriesResponse.data, organizationID);
+  
+        // Save the entire response for each order entry, including organizationID and state
+        await this.saveToMongoDB(entriesResponse.data, organizationID, state);
       });
-
+  
       await Promise.all(asyncLoaders);
       return orders;
     } catch (error) {
@@ -65,9 +65,32 @@ export class KaspiApiService {
       throw new Error(`Error fetching orders: ${error.message}`);
     }
   }
-
-  private async saveToMongoDB(data: any, organizationID: string) {
+  
+  async getAllData(): Promise<any> {
     try {
+      const data = await this.dataKaspiModel.find().exec(); // Fetch all documents
+      return data; // Return the retrieved documents
+    } catch (error) {
+      console.error('Error fetching all data from MongoDB:', error.message);
+      throw new Error('Error fetching data from database');
+    }
+  }
+
+  private async saveToMongoDB(data: any, organizationID: string, state: string) {
+    try {
+      // Add the `statusQS` and `statusFrom` fields to each object in the `data` array
+      const dataWithStatus = data.data.map((item) => ({
+        ...item,
+        statusQS: 'assemble', // Add the statusQS field
+        statusFrom: state,    // Add the statusFrom field based on the state
+      }));
+  
+      const includedWithStatus = data.included?.map((item) => ({
+        ...item,
+        statusQS: 'assemble', // Add the statusQS field
+        statusFrom: state,    // Add the statusFrom field if necessary
+      })) || [];
+  
       // Check if a document already exists for the organizationID
       const existingDocument = await this.dataKaspiModel.findOne({ organizationID });
   
@@ -77,8 +100,8 @@ export class KaspiApiService {
           { organizationID },
           {
             $push: {
-              data: { $each: data.data }, // Append new data array
-              included: { $each: data.included || [] }, // Append included if it exists
+              data: { $each: dataWithStatus }, // Append new data array with statusQS and statusFrom
+              included: { $each: includedWithStatus }, // Append included if it exists
             },
           },
         );
@@ -87,8 +110,8 @@ export class KaspiApiService {
         // Create a new document if it doesn't exist
         const newDocument = new this.dataKaspiModel({
           organizationID,
-          data: data.data || [],
-          included: data.included || [],
+          data: dataWithStatus,
+          included: includedWithStatus,
         });
         await newDocument.save();
         console.log('New document created in MongoDB');
@@ -97,6 +120,10 @@ export class KaspiApiService {
       console.error('Error saving data to MongoDB:', error.message);
     }
   }
+  
+
+  
+  
   
 }
 

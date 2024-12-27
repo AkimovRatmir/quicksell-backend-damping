@@ -9,6 +9,11 @@ export class KaspiApiController {
     private readonly organizationService: OrganizationService, // Inject OrganizationService
   ) {}
 
+  @Get('all-data')
+  async getAllData() {
+    return await this.kaspiApiService.getAllData();
+  }
+
   @Get('orders')
   async getOrders(
     @Query('startDate') startDate: string,
