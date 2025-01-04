@@ -1,37 +1,72 @@
 import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
 import { OrderCollectionService } from './orderCollection.service';
-import { KaspiApiService } from '../kaspiApi/kaspiApi.servise';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { SortedData } from './sortedData.schema';
 
 @Controller('order-collection')
 export class OrderCollectionController {
   constructor(
     private readonly orderCollectionService: OrderCollectionService,
-    private readonly kaspiApiService: KaspiApiService, // Reuse the KaspiApiService
+    @InjectModel(SortedData.name) private readonly sortedDataModel: Model<SortedData>, // Inject SortedData model
   ) {}
 
-  @Get('save')
-  async saveSortedData(
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
-    @Query('state') state: string,
-    @Query('organizationID') organizationID: string,
-  ) {
+  @Get('sort')
+  async sortData(@Query('organizationID') organizationID: string) {
     if (!organizationID) {
       throw new BadRequestException('organizationID is required');
     }
 
-    // Fetch data from Kaspi API
-    const data = await this.kaspiApiService.getOrders(
-      startDate,
-      endDate,
-      state,
-      'YOUR_KASPI_API_TOKEN', // Replace with the actual auth token or pass it dynamically
-      organizationID,
-    );
+    const dataFromDb = await this.sortedDataModel.find({ organizationID }).lean();
+    console.log('Fetched Data from SortedData:', dataFromDb);
 
-    // Save the sorted data
-    await this.orderCollectionService.saveSortedData(organizationID, data);
+    const combinedData = dataFromDb.map((doc) => ({
+      code: doc.code || '',
+      name: doc.name || '',
+      quantity: doc.quantity || 0,
+      totalPrice: doc.totalPrice || 0,
+    }));
+
+    console.log('Prepared Combined Data:', combinedData);
+
+    if (combinedData.length === 0) {
+      console.error('No valid data found for sorting.');
+      throw new Error('No data to process.');
+    }
+
+    await this.orderCollectionService.saveSortedData(organizationID, combinedData);
 
     return { message: 'Sorted data saved successfully' };
   }
+
+  @Get('sorted-data')
+async getSortedData(@Query('organizationID') organizationID: string): Promise<
+  {
+    organizationID: string;
+    code: string;
+    name: string;
+    quantity: number;
+    totalPrice: number;
+  }[]
+> {
+  if (!organizationID) {
+    throw new BadRequestException('organizationID is required');
+  }
+
+  const sortedData = await this.sortedDataModel.find({ organizationID }).lean();
+  if (sortedData.length === 0) {
+    return [];
+  }
+
+  return sortedData.map((doc) => ({
+    organizationID: doc.organizationID,
+    code: doc.code || '',
+    name: doc.name || '',
+    quantity: doc.quantity || 0,
+    totalPrice: doc.totalPrice || 0,
+  }));
 }
+
+}
+
+

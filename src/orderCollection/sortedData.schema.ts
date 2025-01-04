@@ -3,16 +3,22 @@ import { Document } from 'mongoose';
 
 @Schema()
 export class SortedData extends Document {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   organizationID: string;
 
-  @Prop({ type: Array, default: [] })
-  data: {
-    code: string;
-    name: string;
-    quantity: number;
-    totalPrice: number;
-  }[];
+  @Prop()
+  code: string; // Remove `required: true`
+
+  @Prop()
+  name: string; // Remove `required: true`
+
+  @Prop({ type: Number })
+  quantity: number;
+
+  @Prop({ type: Number })
+  totalPrice: number;
+
 }
 
 export const SortedDataSchema = SchemaFactory.createForClass(SortedData);
+

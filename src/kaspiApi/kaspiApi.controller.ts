@@ -15,37 +15,40 @@ export class KaspiApiController {
   }
 
   @Get('orders')
-  async getOrders(
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
-    @Query('state') state: string,
-    @Query('organizationID') organizationID: string, // Include organizationID in request
-    @Headers('X-Auth-Token') authToken: string,
-  ) {
-    // Validate organizationID
-    const isValidOrganization = await this.organizationService.validateOrganizationID(organizationID);
-    if (!isValidOrganization) {
-      throw new BadRequestException(`Invalid organizationID: ${organizationID}`);
-    }
+async getOrders(
+  @Query('startDate') startDate: string,
+  @Query('endDate') endDate: string,
+  @Query('state') state: string,
+  @Query('organizationID') organizationID: string,
+  @Headers('X-Auth-Token') authToken: string,
+) {
+  console.log('Controller - Received Params:', { startDate, endDate, state, organizationID, authToken });
 
-    // Fetch orders for the organization
-    const requests = await Promise.all([
-      this.kaspiApiService.getOrders(startDate, endDate, 'NEW', authToken, organizationID),
-      this.kaspiApiService.getOrders(startDate, endDate, 'SIGN_REQUIRED', authToken, organizationID),
-      this.kaspiApiService.getOrders(startDate, endDate, 'PICKUP', authToken, organizationID),
-      this.kaspiApiService.getOrders(startDate, endDate, 'DELIVERY', authToken, organizationID),
-      this.kaspiApiService.getOrders(startDate, endDate, 'KASPI_DELIVERY', authToken, organizationID),
-      this.kaspiApiService.getOrders(startDate, endDate, 'ARCHIVE', authToken, organizationID),
-    ]);
-
-    return {
-      NEW: requests[0],
-      SIGN_REQUIRED: requests[1],
-      PICKUP: requests[2],
-      DELIVERY: requests[3],
-      KASPI_DELIVERY: requests[4],
-      ARCHIVE: requests[5],
-    };
+  const isValidOrganization = await this.organizationService.validateOrganizationID(organizationID);
+  if (!isValidOrganization) {
+    console.error('Invalid organizationID:', organizationID);
+    throw new BadRequestException(`Invalid organizationID: ${organizationID}`);
   }
+
+  // Fetch orders for the organization
+  const states = ['NEW', 'SIGN_REQUIRED', 'PICKUP', 'DELIVERY', 'KASPI_DELIVERY', 'ARCHIVE'];
+  const results = await Promise.all(
+    states.map((state) =>
+      this.kaspiApiService
+        .getOrders(startDate, endDate, state, authToken, organizationID)
+        .catch((error) => {
+          console.error(`Error fetching orders for state ${state}:`, error.message);
+          return []; // Return empty array for failed requests
+        }),
+    ),
+  );
+
+  const nonEmptyResults = results.filter((result) => result.length > 0);
+
+  console.log('Controller - Non-empty Orders Fetched:', nonEmptyResults);
+  return nonEmptyResults;
+}
+
+
 }
 

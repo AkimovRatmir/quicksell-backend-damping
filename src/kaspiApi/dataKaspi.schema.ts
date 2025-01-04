@@ -3,14 +3,27 @@ import { Document } from 'mongoose';
 
 @Schema()
 export class DataKaspi extends Document {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   organizationID: string;
 
-  @Prop({ type: Array, default: [] }) // Store orders as an array
-  data: any[];
+  @Prop({ type: Object }) // Allow flexible object structure
+  attributes: any;
 
-  @Prop({ type: Array, default: [] }) // Store included data as an array
-  included: any[];
+  @Prop({ type: Object }) // Allow flexible object structure
+  relationships: any;
+
+  @Prop({ type: Object }) // Allow flexible object structure
+  links: any;
+
+  @Prop()
+  statusQS: string;
+
+  @Prop()
+  statusFrom: string;
+
+  @Prop({ type: Array, default: [] })
+data: any[];
+
 }
 
 export const DataKaspiSchema = SchemaFactory.createForClass(DataKaspi);

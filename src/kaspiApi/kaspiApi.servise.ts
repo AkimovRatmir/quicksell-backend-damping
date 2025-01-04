@@ -21,7 +21,6 @@ export class KaspiApiService {
     organizationID: string,
   ): Promise<any> {
     const url = 'https://kaspi.kz/shop/api/v2/orders';
-  
     const params = {
       'page[number]': 0,
       'page[size]': 100,
@@ -35,36 +34,42 @@ export class KaspiApiService {
     const config: AxiosRequestConfig = {
       headers: {
         'Content-Type': 'application/vnd.api+json',
-        'X-Auth-Token': authToken,
+        'X-Auth-Token': 'YOUR_KASPI_API_TOKEN',
         Accept: 'application/vnd.api+json',
       },
       params,
     };
   
     try {
+      console.log('Service - Fetching Orders with Config:', config);
       const response = await lastValueFrom(this.httpService.get(url, config));
-      const orders: any[] = response.data.data;
+      console.log('Service - API Response:', JSON.stringify(response.data, null, 2));
+  
+      const orders = response.data.data;
+  
+      if (!orders || orders.length === 0) {
+        console.warn(`Service - No orders found for state ${state}`);
+        return []; // Skip saving if no data is found
+      }
   
       const asyncLoaders = orders.map(async (order) => {
         const orderEntriesUrl = `https://kaspi.kz/shop/api/v2/orders/${order.id}/entries`;
-        const entriesResponse = await lastValueFrom(
-          this.httpService.get(orderEntriesUrl, config),
-        );
+        const entriesResponse = await lastValueFrom(this.httpService.get(orderEntriesUrl, config));
+        console.log('Service - Order Entries Response:', JSON.stringify(entriesResponse.data, null, 2));
   
-        // Save the entire response for each order entry, including organizationID and state
+        // Save to MongoDB
         await this.saveToMongoDB(entriesResponse.data, organizationID, state);
       });
   
       await Promise.all(asyncLoaders);
       return orders;
     } catch (error) {
-      console.error(
-        'Error fetching orders:',
-        error.response?.data || error.message,
-      );
-      throw new Error(`Error fetching orders: ${error.message}`);
+      console.error('Error in getOrders:', error.response?.data || error.message);
+      return []; // Return empty array for errors
     }
   }
+  
+  
   
   async getAllData(): Promise<any> {
     try {
@@ -78,53 +83,38 @@ export class KaspiApiService {
 
   private async saveToMongoDB(data: any, organizationID: string, state: string) {
     try {
-      // Add the `statusQS` and `statusFrom` fields to each object in the `data` array
-      const dataWithStatus = data.data.map((item) => ({
+      // Prepare the data with additional fields
+      const transformedData = data.data.map((item) => ({
         ...item,
-        statusQS: 'assemble', // Add the statusQS field
-        statusFrom: state,    // Add the statusFrom field based on the state
+        statusQS: 'assemble',
+        statusFrom: state,
+        organizationID,
       }));
   
-      const includedWithStatus = data.included?.map((item) => ({
+      const transformedIncluded = data.included?.map((item) => ({
         ...item,
-        statusQS: 'assemble', // Add the statusQS field
-        statusFrom: state,    // Add the statusFrom field if necessary
+        statusQS: 'assemble',
+        statusFrom: state,
+        organizationID,
       })) || [];
   
-      // Check if a document already exists for the organizationID
-      const existingDocument = await this.dataKaspiModel.findOne({ organizationID });
+      // Combine all data into a single array
+      const allDocuments = [...transformedData, ...transformedIncluded];
   
-      if (existingDocument) {
-        // Append the new data to the existing document's data array
-        await this.dataKaspiModel.updateOne(
-          { organizationID },
-          {
-            $push: {
-              data: { $each: dataWithStatus }, // Append new data array with statusQS and statusFrom
-              included: { $each: includedWithStatus }, // Append included if it exists
-            },
-          },
-        );
-        console.log('Data appended to existing document in MongoDB');
-      } else {
-        // Create a new document if it doesn't exist
-        const newDocument = new this.dataKaspiModel({
-          organizationID,
-          data: dataWithStatus,
-          included: includedWithStatus,
-        });
-        await newDocument.save();
-        console.log('New document created in MongoDB');
+      if (allDocuments.length === 0) {
+        console.warn('No data to save. Skipping MongoDB save operation.');
+        return;
       }
+  
+      // Use insertMany to save all documents directly
+      await this.dataKaspiModel.insertMany(allDocuments, { ordered: false });
+      console.log('All documents saved successfully as standalone entries.');
     } catch (error) {
       console.error('Error saving data to MongoDB:', error.message);
     }
   }
   
-
-  
-  
-  
+   
 }
 
 
