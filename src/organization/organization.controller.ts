@@ -1,9 +1,32 @@
-import { Controller, Post, Body, Put } from '@nestjs/common';
+import { Controller, Post, Body, Put, Get, BadRequestException, Param } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 
 @Controller('organizations')
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
+
+  @Get('orgs')
+  async getAllOrg() {
+    try {
+      const organizations = await this.organizationService.getAllOrg();
+      return { message: 'Organizations retrived successfully', organizations };
+    } catch (error){
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  @Get('org/:organizationID')
+  async getOrgById(@Param('organizationID') organizationID: string) {
+    try {
+      const org = await this.organizationService.getOrgByID(organizationID);
+      if (!org) {
+        throw new BadRequestException('Organization not found');
+      }
+      return { message: 'Organization retrived successfully', org };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
 
   @Post('create')
   async createOrganization(

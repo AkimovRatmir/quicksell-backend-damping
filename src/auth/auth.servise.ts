@@ -12,6 +12,16 @@ export class AuthService {
     private readonly organizationService: OrganizationService, // Inject organization service
   ) {}
 
+  async getUserByOrganizationID(organizationID: string): Promise<User | null> {
+    return await this.userModel
+      .findOne({ organizationID })
+      .select('-password'); // Exclude the password field
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await this.userModel.find().select('-password'); // Exclude the password field
+  }
+
   async register(
     email: string,
     password: string,

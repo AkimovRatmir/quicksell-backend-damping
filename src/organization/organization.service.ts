@@ -17,6 +17,14 @@ export class OrganizationService {
     return organization.save();
   }
 
+  async getOrgByID(organizationID: string): Promise<Organization | null> {
+    return await this.organizationModel.findOne({ organizationID })
+  }
+
+  async getAllOrg(): Promise<Organization[]> {
+    return await this.organizationModel.find().exec();
+  }
+
   async updateOrganization(organizationID: string, BIN: string, KaspiToken: string): Promise<Organization> {
     const organization = await this.organizationModel.findOneAndUpdate(
       { organizationID },

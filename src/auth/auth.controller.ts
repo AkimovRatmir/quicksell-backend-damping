@@ -1,11 +1,34 @@
 // src/auth/auth.controller.ts
 
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, Get, Param } from '@nestjs/common';
 import { AuthService } from './auth.servise'; 
 
 @Controller('')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get('user/:organizationID') // Define route with a dynamic parameter
+  async getUserByOrganizationID(@Param('organizationID') organizationID: string) {
+    try {
+      const user = await this.authService.getUserByOrganizationID(organizationID); // Call the service method
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+      return { message: 'User retrieved successfully', user };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  @Get('users') // Add a new route
+  async getAllUsers() {
+    try {
+      const users = await this.authService.getAllUsers(); // Call the service method
+      return { message: 'Users retrieved successfully', users };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
 
   @Post('register')
 async register(
