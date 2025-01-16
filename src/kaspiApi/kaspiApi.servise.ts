@@ -5,13 +5,16 @@ import { Model } from 'mongoose';
 import { AxiosRequestConfig } from 'axios';
 import { lastValueFrom } from 'rxjs';
 import { DataKaspi } from './dataKaspi.schema';
+import { SortedData } from './sortedData.schema';
 
 @Injectable()
 export class KaspiApiService {
   constructor(
     private readonly httpService: HttpService,
     @InjectModel(DataKaspi.name) private dataKaspiModel: Model<DataKaspi>,
+    @InjectModel(SortedData.name) private sortedDataModel: Model<SortedData>, // Inject SortedData model
   ) {}
+
 
   async getOrders(
     startDate: string,
@@ -41,9 +44,7 @@ export class KaspiApiService {
     };
   
     try {
-      console.log('Service - Fetching Orders with Config:', config);
       const response = await lastValueFrom(this.httpService.get(url, config));
-      console.log('Service - API Response:', JSON.stringify(response.data, null, 2));
   
       const orders = response.data.data;
   
@@ -55,7 +56,6 @@ export class KaspiApiService {
       const asyncLoaders = orders.map(async (order) => {
         const orderEntriesUrl = `https://kaspi.kz/shop/api/v2/orders/${order.id}/entries`;
         const entriesResponse = await lastValueFrom(this.httpService.get(orderEntriesUrl, config));
-        console.log('Service - Order Entries Response:', JSON.stringify(entriesResponse.data, null, 2));
   
         // Save to MongoDB
         await this.saveToMongoDB(entriesResponse.data, organizationID, state);
@@ -81,24 +81,66 @@ export class KaspiApiService {
     }
   }
 
+  async getSortedData(organizationID: string): Promise<any> {
+    return await this.sortedDataModel.find({ organizationID }).exec();
+  }
+  
+  async deleteOrganizationData(organizationID: string): Promise<any> {
+    try {
+      // Delete from datakaspis collection
+      const deletedDataKaspi = await this.dataKaspiModel.deleteMany({ organizationID });
+      console.log(`Deleted ${deletedDataKaspi.deletedCount} documents from datakaspis`);
+  
+      // Delete from sorteddatas collection
+      const deletedSortedData = await this.sortedDataModel.deleteMany({ organizationID });
+      console.log(`Deleted ${deletedSortedData.deletedCount} documents from sorteddatas`);
+  
+      return {
+        message: 'Data deleted successfully',
+        deletedDataKaspi: deletedDataKaspi.deletedCount,
+        deletedSortedData: deletedSortedData.deletedCount,
+      };
+    } catch (error) {
+      console.error('Error deleting data:', error.message);
+      throw new Error('Error deleting data');
+    }
+  }
+  
+  async updateStatusQS(id: string, newStatus: string): Promise<any> {
+    if (!['assemble', 'ready', 'unready'].includes(newStatus)) {
+      throw new Error('Invalid status. Allowed values: assemble, ready, unready.');
+    }
+  
+    const updatedDoc = await this.sortedDataModel.findByIdAndUpdate(
+      id,
+      { statusQS: newStatus },
+      { new: true } // Return the updated document
+    );
+  
+    if (!updatedDoc) {
+      throw new Error(`No document found with id: ${id}`);
+    }
+  
+    return updatedDoc;
+  }
+  
+
   private async saveToMongoDB(data: any, organizationID: string, state: string) {
     try {
-      // Prepare the data with additional fields
       const transformedData = data.data.map((item) => ({
         ...item,
         statusQS: 'assemble',
         statusFrom: state,
-        organizationID,
+        organizationID, // <-- Add organizationID
       }));
   
       const transformedIncluded = data.included?.map((item) => ({
         ...item,
         statusQS: 'assemble',
         statusFrom: state,
-        organizationID,
+        organizationID, // <-- Add organizationID
       })) || [];
   
-      // Combine all data into a single array
       const allDocuments = [...transformedData, ...transformedIncluded];
   
       if (allDocuments.length === 0) {
@@ -106,13 +148,30 @@ export class KaspiApiService {
         return;
       }
   
-      // Use insertMany to save all documents directly
+      // Save full data to datakaspis collection
       await this.dataKaspiModel.insertMany(allDocuments, { ordered: false });
-      console.log('All documents saved successfully as standalone entries.');
+  
+      // Extract and save only required fields to sorteddatas collection
+      const sortedData = allDocuments.map((item) => ({
+        organizationID: item.organizationID,
+        statusQS: item.statusQS,
+        statusFrom: item.statusFrom,
+        code: item.attributes.offer.code,
+        name: item.attributes.offer.name,
+        quantity: item.attributes.quantity,
+        totalPrice: item.attributes.totalPrice,
+      }));
+  
+      await this.sortedDataModel.insertMany(sortedData, { ordered: false });
+  
+      console.log('Sorted data saved successfully in sorteddatas collection.');
+  
     } catch (error) {
       console.error('Error saving data to MongoDB:', error.message);
     }
   }
+  
+  
   
    
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Headers, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Query, Headers, BadRequestException, Delete, Patch, Param, Body } from '@nestjs/common';
 import { KaspiApiService } from './kaspiApi.servise';
 import { OrganizationService } from '../organization/organization.service';
 
@@ -14,6 +14,30 @@ export class KaspiApiController {
     return await this.kaspiApiService.getAllData();
   }
 
+  @Delete('delete-data')
+  async deleteOrganizationData(@Query('organizationID') organizationID: string) {
+    if (!organizationID) {
+      throw new BadRequestException('organizationID is required');
+    }
+    return await this.kaspiApiService.deleteOrganizationData(organizationID);
+  }
+
+  @Get('sorted-data')
+  async getSortedData(@Query('organizationID') organizationID: string) {
+    if (!organizationID) {
+      throw new BadRequestException('organizationID is required');
+    }
+    return await this.kaspiApiService.getSortedData(organizationID);
+  }
+
+  @Patch('sorted/update-status/:id')
+  async updateStatusQS(@Param('id') id: string, @Body('statusQS') statusQS: string) {
+    if (!statusQS) {
+      throw new BadRequestException('statusQS is required');
+    }
+    return await this.kaspiApiService.updateStatusQS(id, statusQS);
+  }
+
   @Get('orders')
 async getOrders(
   @Query('startDate') startDate: string,
@@ -22,7 +46,6 @@ async getOrders(
   @Query('organizationID') organizationID: string,
   @Headers('X-Auth-Token') authToken: string,
 ) {
-  console.log('Controller - Received Params:', { startDate, endDate, state, organizationID, authToken });
 
   const isValidOrganization = await this.organizationService.validateOrganizationID(organizationID);
   if (!isValidOrganization) {
@@ -45,7 +68,7 @@ async getOrders(
 
   const nonEmptyResults = results.filter((result) => result.length > 0);
 
-  console.log('Controller - Non-empty Orders Fetched:', nonEmptyResults);
+  
   return nonEmptyResults;
 }
 

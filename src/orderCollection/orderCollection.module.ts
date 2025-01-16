@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { OrderCollectionController } from './orderCollection.controller';
 import { OrderCollectionService } from './orderCollection.service';
-import { SortedData, SortedDataSchema } from './sortedData.schema';
+import { SortedData, SortedDataSchema } from './sortedData.schemaa';
 import { DataKaspi, DataKaspiSchema } from '../kaspiApi/dataKaspi.schema'; // Import DataKaspi schema
 import { KaspiApiModule } from '../kaspiApi/kaspiApi.module'; // Import KaspiApiModule
 

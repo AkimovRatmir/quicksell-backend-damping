@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { DataKaspi } from '../kaspiApi/dataKaspi.schema';
-import { SortedData } from './sortedData.schema';
+import { SortedData } from './sortedData.schemaa';
 
 @Injectable()
 export class OrderCollectionService {
@@ -10,6 +10,14 @@ export class OrderCollectionService {
     @InjectModel(DataKaspi.name) private dataKaspiModel: Model<DataKaspi>,
     @InjectModel(SortedData.name) private sortedDataModel: Model<SortedData>,
   ) {}
+
+  async getDataKaspiByOrganizationID(organizationID: string): Promise<DataKaspi[]> {
+    return this.dataKaspiModel.find({ organizationID });
+  }
+  
+  
+  
+  
 
   async saveSortedData(organizationID: string, data: any[]) {
     if (data.length === 0) {
