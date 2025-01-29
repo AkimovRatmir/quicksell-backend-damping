@@ -3,9 +3,9 @@ import { HttpModule } from '@nestjs/axios';
 import { MongooseModule } from '@nestjs/mongoose';
 import { KaspiApiController } from './kaspiApi.controller';
 import { KaspiApiService } from './kaspiApi.servise';
-import { DataKaspi, DataKaspiSchema } from './dataKaspi.schema';
+import { DataKaspi, DataKaspiSchema } from './schemas/dataKaspi.schema';
 import { OrganizationModule } from '../organization/organization.module'; // Import OrganizationModule
-import { SortedData, SortedDataSchema } from './sortedData.schema';
+import { SortedData, SortedDataSchema } from './schemas/sortedData.schema';
 
 @Module({
   imports: [

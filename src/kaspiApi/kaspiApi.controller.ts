@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Headers, BadRequestException, Delete, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Get, Query, Headers, BadRequestException, Delete, Patch, Param, Body, Post } from '@nestjs/common';
 import { KaspiApiService } from './kaspiApi.servise';
 import { OrganizationService } from '../organization/organization.service';
 
@@ -36,6 +36,18 @@ export class KaspiApiController {
       throw new BadRequestException('statusQS is required');
     }
     return await this.kaspiApiService.updateStatusQS(id, statusQS);
+  }
+
+  @Post('update-order')
+  async updateOrder(
+    @Body('orderId') orderId: string,
+    @Headers('X-Auth-Token') authToken: string
+  ) {
+    if (!orderId) {
+      throw new BadRequestException('orderId is required');
+    }
+
+    return await this.kaspiApiService.updateOrderStatus(orderId, authToken);
   }
 
   @Get('orders')
