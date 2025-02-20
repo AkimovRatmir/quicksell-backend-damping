@@ -212,10 +212,10 @@ export class KaspiApiService {
    * Updates the statusQS field for a given document ID.
    */
   async updateStatusQS(id: string, newStatus: string): Promise<any> {
-    if (!['assemble', 'ready', 'unready'].includes(newStatus)) {
+    if (!['assemble', 'onDelivery', 'Delivered'].includes(newStatus)) {
       throw new Error(
         'Invalid status. Allowed values: assemble, ready, unready.',
-      );
+      );  
     }
 
     const updatedDoc = await this.sortedDataModel.findByIdAndUpdate(
@@ -253,7 +253,7 @@ export class KaspiApiService {
     const config: AxiosRequestConfig = {
       headers: {
         'Content-Type': 'application/json',
-        'X-Auth-Token': authToken,
+        'X-Auth-Token': 'YOUR_KASPI_API_TOKEN',
         Accept: 'application/vnd.api+json',
       },
     };
@@ -288,7 +288,6 @@ export class KaspiApiService {
         { 'attributes.id': orderId },
         { $set: { 'attributes.status': 'ASSEMBLE', 'attributes.kaspiDelivery.waybill': kaspiWaybill } }
       );
-  
       return { message: 'Order updated successfully', kaspiWaybill };
     } catch (error) {
       console.error('Error updating order status:', error.response?.data || error.message);
