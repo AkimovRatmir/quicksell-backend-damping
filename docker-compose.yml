@@ -1,10 +1,33 @@
-version: '3'
+version: '3.8'
+
 services:
   app:
-    build: .
+    container_name: nestjs_app
+    build:
+      context: .
+      dockerfile: Dockerfile  # Make sure you have this in your project
     ports:
       - "3000:3000"
     volumes:
       - .:/usr/src/app
+      - /usr/src/app/node_modules  # Prevent overwriting node_modules
     environment:
       - NODE_ENV=development
+    depends_on:
+      - mongodb
+    restart: always  # Auto-restart if the app crashes
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
+
+volumes:
+  mongodb_data:
