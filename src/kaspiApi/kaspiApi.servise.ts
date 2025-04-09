@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { AxiosRequestConfig } from 'axios';
+import { AxiosRequestConfig } from 'axios/index';
 import { lastValueFrom } from 'rxjs';
 import { DataKaspi } from './schemas/dataKaspi.schema';
 import { SortedData } from './schemas/sortedData.schema';
@@ -103,7 +103,6 @@ export class KaspiApiService {
 
       // Save full order object in datakaspis collection
       await this.dataKaspiModel.create(fullOrderData);
-
       // sSorting Logic: Extract key attributes and save to `sortedData`
       const sortedData = entriesResponse.data.data.map((entry) => ({
         organizationID: organizationID,
@@ -116,51 +115,58 @@ export class KaspiApiService {
         name: entry.attributes?.offer?.name || 'Unknown Product',
         quantity: entry.attributes?.quantity || 0,
         totalPrice: entry.attributes?.totalPrice || 0,
-
-        // Additional Fields:
-        originFormattedAddress:
-          order.attributes?.originAddress?.address?.formattedAddress || 'N/A',
+        paymentMode: order.attributes?.paymentMode || 'N/A',
+      
+        // Address details
+        originFormattedAddress: order.attributes?.originAddress?.address?.formattedAddress || 'N/A',
         cityName: order.attributes?.originAddress?.city?.name || 'N/A',
         plannedDeliveryDate: order.attributes?.plannedDeliveryDate || null,
         creationDate: order.attributes?.creationDate || null,
-
+      
         // Delivery details
-        deliveryFormattedAddress:
-          order.attributes?.deliveryAddress?.formattedAddress || 'N/A',
-        deliveryStreetName:
-          order.attributes?.deliveryAddress?.streetName || 'N/A',
-        deliveryStreetNumber:
-          order.attributes?.deliveryAddress?.streetNumber || 'N/A',
+        deliveryFormattedAddress: order.attributes?.deliveryAddress?.formattedAddress || 'N/A',
+        deliveryStreetName: order.attributes?.deliveryAddress?.streetName || 'N/A',
+        deliveryStreetNumber: order.attributes?.deliveryAddress?.streetNumber || 'N/A',
         deliveryTown: order.attributes?.deliveryAddress?.town || 'N/A',
-
+      
         // Kaspi Delivery Info
         kaspiWaybill: order.attributes?.kaspiDelivery?.waybill || 'N/A',
-        kaspiWaybillNumber:
-          order.attributes?.kaspiDelivery?.waybillNumber || 'N/A',
-        courierTransmissionDate:
-          order.attributes?.kaspiDelivery?.courierTransmissionDate || null,
-        courierTransmissionPlanningDate:
-          order.attributes?.kaspiDelivery?.courierTransmissionPlanningDate ||
-          null,
-
+        kaspiWaybillNumber: order.attributes?.kaspiDelivery?.waybillNumber || 'N/A',
+        
+        // Make sure that these fields are either null or a valid timestamp number
+        courierTransmissionDate: 
+          order.attributes?.kaspiDelivery?.courierTransmissionDate === 'N/A' 
+            ? null 
+            : order.attributes?.kaspiDelivery?.courierTransmissionDate,
+            
+        courierTransmissionPlanningDate: 
+          order.attributes?.kaspiDelivery?.courierTransmissionPlanningDate === 'N/A' 
+            ? null 
+            : order.attributes?.kaspiDelivery?.courierTransmissionPlanningDate,
+      
         // Customer details
         customerName: order.attributes?.customer?.name || 'N/A',
         customerFirstName: order.attributes?.customer?.firstName || 'N/A',
         customerLastName: order.attributes?.customer?.lastName || 'N/A',
         customerCellPhone: order.attributes?.customer?.cellPhone || 'N/A',
-
+      
         // Delivery Mode
         deliveryMode: order.attributes?.deliveryMode || 'N/A',
+        deliveryCost: order.attributes?.deliveryCost || 0,
       }));
-
-      // Save sorted data separately
+      
+      // After modifying the data, save it to the database
       if (sortedData.length > 0) {
-        await this.sortedDataModel.insertMany(sortedData, { ordered: false });
+        try {
+          await this.sortedDataModel.insertMany(sortedData);
+          console.log('Sorted data saved successfully.');
+        } catch (error) {
+          console.error('Error saving sorted data:', error.message);
+        }
       } else {
-        console.log('sorted data is empty');
+        console.log('No sorted data to save.');
       }
-
-      console.log(`Saved order ${order.id} with entries & sorted data.`);
+                 
     } catch (error) {
       console.error('Error saving order to MongoDB:', error.message);
     }

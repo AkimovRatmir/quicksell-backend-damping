@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { KaspiService } from './kaspi/kaspi.service';
-import { KaspiController } from './kaspi/kaspi.controller';
 import { ExcelModule } from './excelInt/exel.module';
 import { AuthModule } from './auth/auth.module';
 import { KaspiApiModule } from './kaspiApi/kaspiApi.module';
 import { OrganizationModule } from './organization/organization.module'; // Import the OrganizationModule
 import { OrderCollectionModule } from './orderCollection/orderCollection.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { BotBazaModule } from './botbaza/product.module';
+import { Product } from './botbaza/product.entity';
 
 @Module({
   imports: [
@@ -15,11 +16,23 @@ import { OrderCollectionModule } from './orderCollection/orderCollection.module'
     AuthModule,
     KaspiApiModule,
     OrganizationModule,
-    OrderCollectionModule // Add the OrganizationModule
-    // ScheduleTaskModule
+    OrderCollectionModule ,
+    BotBazaModule,
+
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432, // default PostgreSQL port
+      username: 'postgres',
+      password: '12345',
+      database: 'products_python_bot',
+      entities: [Product],
+      synchronize: true, // set to false in production
+    }),
+    
   ],
-  controllers: [KaspiController],
-  providers: [KaspiService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
 

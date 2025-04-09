@@ -1,92 +1,128 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { ApiProperty } from '@nestjs/swagger';
 
 @Schema()
 export class SortedData extends Document {
-    @Prop({ required: true })
-    organizationID: string;
+  @Prop({ required: true })
+  @ApiProperty()
+  organizationID: string;
 
-    @Prop({ required: true })
-    statusQS: string;
+  @Prop({ required: true })
+  @ApiProperty()
+  statusQS: string;
 
-    @Prop({ required: true })
-    statusFrom: string;
+  @Prop({ required: true })
+  @ApiProperty()
+  statusFrom: string;
 
-    @Prop({ required: true })
-    orderId: string;
+  @Prop({ required: true })
+  @ApiProperty()
+  orderId: string;
 
-    @Prop({ required: true })
-    codeZK: string;
+  @Prop({ required: true })
+  @ApiProperty()
+  codeZK: string;
 
-    @Prop({ required: true })
-    assemble: string;    
+  @Prop({ required: true })
+  @ApiProperty()
+  assemble: string;
 
-    @Prop({ required: true })
-    code: string;
+  @Prop({ required: true })
+  @ApiProperty()
+  code: string;
 
-    @Prop({ required: true })
-    name: string;
+  @Prop({ required: true })
+  @ApiProperty()
+  name: string;
 
-    @Prop({ required: true })
-    quantity: number;
+  @Prop({ required: true })
+  @ApiProperty()
+  quantity: number;
 
-    @Prop({ required: true })
-    totalPrice: number;
+  @Prop()
+  @ApiProperty()
+  totalPrice: number;
 
-    @Prop()
-    originFormattedAddress: string; // Example: "г. Алматы, проспект Турара Рыскулова, 61В"
+  @Prop()
+  @ApiProperty()
+  paymentMode: string;
 
-    @Prop()
-    cityName: string; // Example: "Алматы"
+  @Prop()
+  @ApiProperty()
+  originFormattedAddress: string;
 
-    @Prop()
-    plannedDeliveryDate: number; // Timestamp
+  @Prop()
+  @ApiProperty()
+  cityName: string;
 
-    @Prop()
-    creationDate: number; // Timestamp
+  @Prop()
+  @ApiProperty()
+  plannedDeliveryDate: Date; // Use Date type if it's a valid date or null
 
-    // Delivery Address Details
-    @Prop()
-    deliveryFormattedAddress: string; // Example: "Бесагаш, улица Райымбек Батыра, 161Б/9, 103"
+  @Prop()
+  @ApiProperty()
+  creationDate: Date; // Use Date type for timestamp
 
-    @Prop()
-    deliveryStreetName: string; // Example: "улица Райымбек Батыра"
+  // Delivery Address Details
+  @Prop()
+  @ApiProperty()
+  deliveryFormattedAddress: string;
 
-    @Prop()
-    deliveryStreetNumber: string; // Example: "161Б/9"
+  @Prop()
+  @ApiProperty()
+  deliveryStreetName: string;
 
-    @Prop()
-    deliveryTown: string; // Example: "Бесагаш"
+  @Prop()
+  @ApiProperty()
+  deliveryStreetNumber: string;
 
-    // Kaspi Delivery Information
-    @Prop()
-    kaspiWaybill: string; // Waybill URL
+  @Prop()
+  @ApiProperty()
+  deliveryTown: string;
 
-    @Prop()
-    kaspiWaybillNumber: string; // Example: "164235723"
+  // Kaspi Delivery Information
+  @Prop()
+  @ApiProperty()
+  kaspiWaybill: string;
 
-    @Prop()
-    courierTransmissionDate: number; // Timestamp
+  @Prop()
+  @ApiProperty()
+  kaspiWaybillNumber: string;
 
-    @Prop()
-    courierTransmissionPlanningDate: number; // Timestamp
+  @Prop({ type: Number, default: null })
+  @ApiProperty()
+  courierTransmissionDate: number; // Use Number type, with null as the default value if not available
 
-    // Customer Details
-    @Prop()
-    customerName: string; // Example: "Галымжан"
+  @Prop({ type: Number, default: null })
+  @ApiProperty()
+  courierTransmissionPlanningDate: number; // Use Number type, with null as the default value if not available
 
-    @Prop()
-    customerFirstName: string; // Example: "Алексей"
+  // Customer Details
+  @Prop()
+  @ApiProperty()
+  customerName: string;
 
-    @Prop()
-    customerLastName: string; // Example: "Гордеев"
+  @Prop()
+  @ApiProperty()
+  customerFirstName: string;
 
-    @Prop()
-    customerCellPhone: string; // Example: "7777028202"
+  @Prop()
+  @ApiProperty()
+  customerLastName: string;
 
-    // Delivery Mode
-    @Prop()
-    deliveryMode: string; // Example: "DELIVERY_REGIONAL_TODOOR"
+  @Prop()
+  @ApiProperty()
+  customerCellPhone: string;
+
+  // Delivery Mode and cost
+  @Prop()
+  @ApiProperty()
+  deliveryMode: string;
+
+  @Prop({ type: Number, default: 0 })
+  @ApiProperty()
+  deliveryCost: number; 
 }
 
 export const SortedDataSchema = SchemaFactory.createForClass(SortedData);
