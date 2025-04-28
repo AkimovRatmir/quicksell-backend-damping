@@ -6,6 +6,7 @@ import { AxiosRequestConfig } from 'axios/index';
 import { lastValueFrom } from 'rxjs';
 import { DataKaspi } from './schemas/dataKaspi.schema';
 import { SortedData } from './schemas/sortedData.schema';
+import { Organization } from 'src/organization/organization.schema';
 
 @Injectable()
 export class KaspiApiService {
@@ -13,6 +14,7 @@ export class KaspiApiService {
     private readonly httpService: HttpService,
     @InjectModel(DataKaspi.name) private dataKaspiModel: Model<DataKaspi>,
     @InjectModel(SortedData.name) private sortedDataModel: Model<SortedData>,
+    @InjectModel(Organization.name) private organizationModel: Model<Organization>,
   ) {}
 
   /**
@@ -22,7 +24,6 @@ export class KaspiApiService {
     startDate: string,
     endDate: string,
     state: string,
-    authToken: string,
     organizationID: string,
   ): Promise<any> {
     const url = 'https://kaspi.kz/shop/api/v2/orders';
@@ -35,6 +36,24 @@ export class KaspiApiService {
       'filter[orders][signatureRequired]': 'true',
       'include[orders]': 'user',
     };
+
+    const deletedDataKaspi = await this.dataKaspiModel.deleteMany({
+      organizationID,
+    });
+    const deletedSortedData = await this.sortedDataModel.deleteMany({
+      organizationID,
+    });
+
+    console.log('Deleted old data for the organization: $(organizationID)', 
+    deletedDataKaspi.deletedCount, deletedSortedData.deletedCount );
+
+    const organization = await this.organizationModel.findOne({ organizationID }).exec();
+      if (!organization || !organization.KaspiToken){
+        throw new Error('Kaspi Token not found for the organization: ${organizationID}')
+      }
+
+      const authToken = organization.KaspiToken;
+
 
     const config: AxiosRequestConfig = {
       headers: {
@@ -78,8 +97,15 @@ export class KaspiApiService {
     organizationID: string,
     state: string,
     authToken: string,
-  ) {
+    ) {
     try {
+      // const organization = await this.organizationModel.findOne({ organizationID }).exec();
+      // if (!organization || !organization.KaspiToken){
+      //   throw new Error('Kaspi Token not found for the organization: ${organizationID}')
+      // }
+
+      // const authToken = organization.KaspiToken;
+
       // Fetch entries for the order
       const orderEntriesUrl = `https://kaspi.kz/shop/api/v2/orders/${order.id}/entries`;
       const entriesResponse = await lastValueFrom(

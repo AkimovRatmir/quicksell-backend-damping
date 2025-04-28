@@ -12,8 +12,8 @@ export class CreateOrganizationDto {
 }
 
 export class UpdateOrganizationDto {
-  @ApiProperty()
-  organizationID: string;
+  @ApiProperty({ required: false })
+  organizationID?: string;
 
   @ApiProperty()
   BIN: string;

@@ -4,12 +4,16 @@ import { Model } from 'mongoose';
 import { User } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { OrganizationService } from '../organization/organization.service';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
-    private readonly organizationService: OrganizationService, // Inject organization service
+    private readonly organizationService: OrganizationService,
+    private readonly jwtServise: JwtService,
+    private readonly configService: ConfigService, 
   ) {}
 
   async getUserByOrganizationID(organizationID: string): Promise<User | null> {
@@ -59,15 +63,25 @@ export class AuthService {
     return savedUser;
   }
 
-  async login(email: string, password: string): Promise<Partial<User> | null> {
+  async login(email: string, password: string): Promise<any> {
     const sanitizedEmail = email.trim().toLowerCase(); // Normalize email
     const user = await this.userModel.findOne({ email: sanitizedEmail });
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new BadRequestException('Invalid credentials');
     }
 
-    // Return user data without the password
-    const { password: _, ...userWithoutPassword } = user.toObject();
-    return userWithoutPassword;
+    const payload = {
+      sub: user._id,
+      email: user.email,
+      organizationID: user.organizationID,
+    };
+    
+    return {
+      access_token: this.jwtServise.sign(payload, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN'),
+      }),
+    };
   }
 }

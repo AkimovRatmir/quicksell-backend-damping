@@ -16,7 +16,7 @@ export class RegisterDto {
 
 export class LoginDto {
   @ApiProperty()
-  username: string;
+  email: string;
 
   @ApiProperty()
   password: string;

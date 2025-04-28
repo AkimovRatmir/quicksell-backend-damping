@@ -7,14 +7,16 @@ import { DataKaspi, DataKaspiSchema } from './schemas/dataKaspi.schema';
 import { OrganizationModule } from '../organization/organization.module'; // Import OrganizationModule
 import { SortedData, SortedDataSchema } from './schemas/sortedData.schema';
 
+
 @Module({
   imports: [
     HttpModule,
+    OrganizationModule,
     MongooseModule.forFeature([
       { name: DataKaspi.name, schema: DataKaspiSchema },
       { name: SortedData.name, schema: SortedDataSchema }, // Register new schema
     ]),
-    OrganizationModule,
+    
   ],
   controllers: [KaspiApiController],
   providers: [KaspiApiService],

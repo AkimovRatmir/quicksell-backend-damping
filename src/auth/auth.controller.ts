@@ -59,7 +59,7 @@ export class AuthController {
     },
   })
   async login(@Body() body: LoginDto) {
-    const user = await this.authService.login(body.username, body.password);
+    const user = await this.authService.login(body.email, body.password);
     return { message: 'Login successful', user };
   }
 }

@@ -8,6 +8,8 @@ import { OrderCollectionModule } from './orderCollection/orderCollection.module'
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BotBazaModule } from './botbaza/product.module';
 import { Product } from './botbaza/product.entity';
+import { ConfigModule } from '@nestjs/config';
+
 
 @Module({
   imports: [
@@ -18,6 +20,10 @@ import { Product } from './botbaza/product.entity';
     OrganizationModule,
     OrderCollectionModule ,
     BotBazaModule,
+
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
 
     TypeOrmModule.forRoot({
       type: 'postgres',

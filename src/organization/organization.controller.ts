@@ -2,9 +2,13 @@ import { Controller, Post, Body, Put, Get, BadRequestException, Param } from '@n
 import { OrganizationService } from './organization.service';
 import { Organization } from './organization.schema';
 import { CreateOrganizationDto, UpdateOrganizationDto } from './dtos/organization.dto'; 
-import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { UseGuards, Req } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
 
 @ApiTags('Organizations')
+@ApiBearerAuth('access-token')
 @Controller('organizations')
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
@@ -40,14 +44,18 @@ export class OrganizationController {
   }
 
   @Put('update')
-  @ApiOperation({ summary: 'Update organization BIN and KaspiToken' })
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Securely update organization BIN and KaspiToken' })
   @ApiBody({ type: UpdateOrganizationDto })
   @ApiResponse({ status: 200, type: Organization })
-  async updateOrganization(@Body() body: UpdateOrganizationDto) {
+  async updateOrganization(@Body() body: UpdateOrganizationDto, @Req() req) {
+    const { organizationID } = req.user;
+    const { BIN, KaspiToken } = body;
+    
     return this.organizationService.updateOrganization(
-      body.organizationID,
-      body.BIN,
-      body.KaspiToken,
+      organizationID,
+      BIN,
+      KaspiToken,
     );
   }
 }

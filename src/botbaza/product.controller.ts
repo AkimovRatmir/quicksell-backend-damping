@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body } from "@nestjs/common";
+import { Controller, Get, Patch, Param, Body, Delete } from "@nestjs/common";
 import { BotBazaServise } from "./product.servise";
 import { Product } from "./product.entity";
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from "@nestjs/swagger";
@@ -27,4 +27,14 @@ export class BotBazaController {
     ){
         return this.botbazaServise.updateProduct(id, updateProductDto);
     }
+
+    @Delete('/delete/:id')
+    @ApiOperation({ summary: 'Delete the product by the id' })
+    @ApiParam({ name: 'id', type: Number })
+    deleteProduct(
+        @Param('id') id: number,
+    ){
+        return this.botbazaServise.deleteOneProduct(id);
+    }
+    
 }

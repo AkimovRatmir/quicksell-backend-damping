@@ -10,13 +10,22 @@ async function bootstrap() {
   app.enableCors();
 
   const config = new DocumentBuilder()
-    .setTitle('wAppR API')
-    .setDescription('API Docs for a fucking dumbasssss Vladislav')
-    .setVersion('1.0')
-    .build();
+  .setTitle('KaspiBot API')
+  .setDescription('API for KaspiBot management')
+  .setVersion('1.0')
+  .addBearerAuth( // This is what makes the "Authorize" button appear
+    {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      in: 'header',
+    },
+    'access-token', // <- this name MUST match @ApiBearerAuth('access-token')
+  )
+  .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, document);
+const document = SwaggerModule.createDocument(app, config);
+SwaggerModule.setup('api', app, document);
 
   // Global Validation Pipe to handle DTO validation
   // app.useGlobalPipes(new ValidationPipe({
