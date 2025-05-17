@@ -2,7 +2,7 @@ import { Controller, Post, Body, BadRequestException, Get, Param } from '@nestjs
 import { AuthService } from './auth.servise';
 import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto, LoginDto } from './dtos/auth.dto'; 
-import { User } from './user.schema';
+import { User } from './dtos/user.schema';
 
 @ApiTags('Authentication')
 @Controller()
@@ -34,11 +34,12 @@ export class AuthController {
   async register(@Body() body: RegisterDto) {
     const user = await this.authService.register(
       body.email,
+      body.firstName,
+      body.lastName,
       body.password,
       body.phoneNumber,
-      body.role,
     );
-    return { message: 'User registered successfully', user };
+    return { message: 'User registered successfully', user};
   }
 
   @Post('login')

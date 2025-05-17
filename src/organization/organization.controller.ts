@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Put, Get, BadRequestException, Param } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
-import { Organization } from './organization.schema';
+import { Organization } from './dtos/organization.schema';
 import { CreateOrganizationDto, UpdateOrganizationDto } from './dtos/organization.dto'; 
 import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UseGuards, Req } from '@nestjs/common';
@@ -21,27 +21,51 @@ export class OrganizationController {
     return { message: 'Organizations retrieved successfully', organizations };
   }
 
-  @Get('org/:organizationID')
-  @ApiOperation({ summary: 'Get organization by ID' })
-  @ApiParam({ name: 'organizationID', type: String })
+  @Get('org')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'loggen in organization' })
   @ApiResponse({ status: 200, type: Organization })
-  async getOrgById(@Param('organizationID') organizationID: string) {
+  async getOrgById(@Req() req) {
+    const { organizationID } = req.user;
     const org = await this.organizationService.getOrgByID(organizationID);
     if (!org) throw new BadRequestException('Organization not found');
     return { message: 'Organization retrieved successfully', org };
   }
 
-  @Post('create')
-  @ApiOperation({ summary: 'Create new organization' })
-  @ApiBody({ type: CreateOrganizationDto })
-  @ApiResponse({ status: 201, type: Organization })
-  async createOrganization(@Body() body: CreateOrganizationDto) {
-    return this.organizationService.createOrganization(
-      body.organizationID,
-      body.email,
-      body.phoneNumber,
-    );
-  }
+
+//   @Get('globals')
+//   @UseGuards(AuthGuard('jwt'))
+//   @ApiOperation({ summary: 'Get stepGlob and minPriceGlob by organizationID' })
+//   @ApiResponse({ status: 200, schema: {
+//     example: {
+//       stepGlob: 100,
+//       minPriceGlob: 1000
+//     }
+//   }})
+// async getGlobals(@Req() req) {
+//   const { organizationID } = req.user;
+//   const org = await this.organizationService.getOrgByID(organizationID);
+
+//   if (!org) throw new BadRequestException('Organization not found');
+
+//   return {
+//     stepGlob: org.stepGlob,
+//     minPriceGlob: org.minPriceGlob
+//   };
+// }
+
+
+  // @Post('create')
+  // @ApiOperation({ summary: 'Create new organization' })
+  // @ApiBody({ type: CreateOrganizationDto })
+  // @ApiResponse({ status: 201, type: Organization })
+  // async createOrganization(@Body() body: CreateOrganizationDto) {
+  //   return this.organizationService.createOrganization(
+  //     body.organizationID,
+  //     body.email,
+  //     body.phoneNumber,
+  //   );
+  // }
 
   @Put('update')
   @UseGuards(AuthGuard('jwt'))
@@ -50,12 +74,23 @@ export class OrganizationController {
   @ApiResponse({ status: 200, type: Organization })
   async updateOrganization(@Body() body: UpdateOrganizationDto, @Req() req) {
     const { organizationID } = req.user;
-    const { BIN, KaspiToken } = body;
+    const { KaspiToken, isPaid, capacity, isOn, isOnDemo, stepGlob, minPriceGlob, maxPriceGlob } = body;
     
-    return this.organizationService.updateOrganization(
-      organizationID,
-      BIN,
-      KaspiToken,
-    );
+    if ( isPaid == "true" || isPaid == "false")
+      return this.organizationService.updateOrganization(
+        organizationID,
+        KaspiToken,
+        isPaid,
+        capacity,
+        isOn,
+        isOnDemo,
+        stepGlob,
+        minPriceGlob,
+        maxPriceGlob
+      );
+    else {
+        throw new BadRequestException('should include right isPaid info')
+      }
+        
   }
 }

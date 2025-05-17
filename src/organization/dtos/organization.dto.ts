@@ -9,15 +9,41 @@ export class CreateOrganizationDto {
 
   @ApiProperty()
   phoneNumber: string;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
 }
 
 export class UpdateOrganizationDto {
-  @ApiProperty({ required: false })
-  organizationID?: string;
-
-  @ApiProperty()
-  BIN: string;
+  // @ApiProperty()
+  // BIN: string;
 
   @ApiProperty()
   KaspiToken: string;
+
+  @ApiProperty()
+  isPaid: string;
+
+  @ApiProperty()
+  capacity: number;
+
+  @ApiProperty()
+  isOn: string;
+
+  @ApiProperty({ required: false })
+  isOnDemo?: string;
+
+  @ApiProperty({ required: false })
+  stepGlob?: number;
+
+  @ApiProperty({ required: false })
+  minPriceGlob?: number;
+
+  @ApiProperty({ required: false })
+  maxPriceGlob?: number;
+
+
 }

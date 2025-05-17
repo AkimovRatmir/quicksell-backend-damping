@@ -44,15 +44,15 @@ export class KaspiApiController {
     return await this.kaspiApiService.getSortedData(organizationID);
   }
 
-  @Patch('sorted/update-status/:id')
-  @ApiOperation({ summary: 'Update statusQS field in sortedData by ID' })
-  @ApiParam({ name: 'id', required: true })
-  @ApiBody({ schema: { example: { statusQS: 'Delivered' } } })
-  async updateStatusQS(@Param('id') id: string, @Body('statusQS') statusQS: string) {
+  @Patch('sorted/update-status/:orderId')
+  @ApiOperation({ summary: 'Update statusQS field in sortedData by orderId' })
+  @ApiParam({ name: 'orderId', required: true })
+  @ApiBody({ schema: { example: { statusQS: 'offDelivery' } } })
+  async updateStatusQS(@Param('orderId') orderId: string, @Body('statusQS') statusQS: string) {
     if (!statusQS) {
       throw new BadRequestException('statusQS is required');
     }
-    return await this.kaspiApiService.updateStatusQS(id, statusQS);
+    return await this.kaspiApiService.updateStatusQS(orderId, statusQS);
   }
 
   @Post('update-order')

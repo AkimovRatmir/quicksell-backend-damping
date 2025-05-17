@@ -1,12 +1,14 @@
-import { Module } from "@nestjs/common";
-import { TypeOrmModule } from "@nestjs/typeorm";
-import { Product } from "./product.entity";
-import { BotBazaServise } from "./product.servise";
-import { BotBazaController } from "./product.controller";
+// botbaza/product.module.ts
+
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Product, ProductSchema } from './dtos/product.entity';
+import { BotBazaService } from './product.servise';
+import { BotBazaController } from './product.controller';
 
 @Module({
-    imports: [ TypeOrmModule.forFeature([Product])],
-    providers: [ BotBazaServise ],
-    controllers: [ BotBazaController ],
+  imports: [MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }])],
+  providers: [BotBazaService],
+  controllers: [BotBazaController],
 })
 export class BotBazaModule {}

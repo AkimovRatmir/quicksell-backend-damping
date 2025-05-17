@@ -1,20 +1,27 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ExcelModule } from './excelInt/exel.module';
 import { AuthModule } from './auth/auth.module';
 import { KaspiApiModule } from './kaspiApi/kaspiApi.module';
 import { OrganizationModule } from './organization/organization.module'; // Import the OrganizationModule
 import { OrderCollectionModule } from './orderCollection/orderCollection.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BotBazaModule } from './botbaza/product.module';
-import { Product } from './botbaza/product.entity';
-import { ConfigModule } from '@nestjs/config';
+import { Product } from './botbaza/dtos/product.entity';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://localhost:27017/auth'), // MongoDB connection
-    ExcelModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+      }),
+    }), // MongoDB connection
     AuthModule,
     KaspiApiModule,
     OrganizationModule,

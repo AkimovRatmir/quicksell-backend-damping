@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User } from './user.schema';
+import { User } from './dtos/user.schema';
 import * as bcrypt from 'bcrypt';
 import { OrganizationService } from '../organization/organization.service';
 import { JwtService } from '@nestjs/jwt';
@@ -28,6 +28,8 @@ export class AuthService {
 
   async register(
     email: string,
+    firstName: string,
+    lastName: string,
     password: string,
     phoneNumber: string,
     role: string = 'user',
@@ -41,9 +43,11 @@ export class AuthService {
 
     const user = new this.userModel({
       email,
+      firstName,
+      lastName,
       password: hashedPassword,
       phoneNumber,
-      role,
+      role: "worker",
       organizationID: `org-${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
     });
 

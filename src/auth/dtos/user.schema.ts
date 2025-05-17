@@ -13,6 +13,14 @@ export class User extends Document {
   @ApiProperty({ example: '+77001234567' })
   phoneNumber: string;
 
+  @Prop({ required: false, unique: false })
+  @ApiProperty({ example: 'Ratmir' })
+  firstName: string;
+
+  @Prop({ required: false, unique: false })
+  @ApiProperty({ example: 'Akimov' })
+  lastName: string;
+
   @Prop({ required: true })
   @ApiProperty({ example: 'hashed_password' })
   password: string;

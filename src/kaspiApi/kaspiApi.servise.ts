@@ -6,7 +6,7 @@ import { AxiosRequestConfig } from 'axios/index';
 import { lastValueFrom } from 'rxjs';
 import { DataKaspi } from './schemas/dataKaspi.schema';
 import { SortedData } from './schemas/sortedData.schema';
-import { Organization } from 'src/organization/organization.schema';
+import { Organization } from 'src/organization/dtos/organization.schema';
 
 @Injectable()
 export class KaspiApiService {
@@ -121,7 +121,7 @@ export class KaspiApiService {
       // Construct the full order object with entries
       const fullOrderData = {
         organizationID,
-        statusQS: 'assemble',
+        statusQS: 'offDelivery',
         statusFrom: state,
         ...order, // Full order details
         entries: entriesResponse.data.data || [], // Store related entries
@@ -132,7 +132,7 @@ export class KaspiApiService {
       // sSorting Logic: Extract key attributes and save to `sortedData`
       const sortedData = entriesResponse.data.data.map((entry) => ({
         organizationID: organizationID,
-        statusQS: 'assemble',
+        statusQS: 'offDelivery',
         statusFrom: state,
         orderId: order.id,
         assemble: order.attributes?.assembled,
@@ -243,21 +243,21 @@ export class KaspiApiService {
   /**
    * Updates the statusQS field for a given document ID.
    */
-  async updateStatusQS(id: string, newStatus: string): Promise<any> {
-    if (!['assemble', 'onDelivery', 'Delivered'].includes(newStatus)) {
+  async updateStatusQS(orderId: string, newStatus: string): Promise<any> {
+    if (!['offDelivery', 'onDelivery'].includes(newStatus)) {
       throw new Error(
-        'Invalid status. Allowed values: assemble, ready, unready.',
+        'Invalid status. Allowed values: offDelivery, onDelivery.',
       );  
     }
 
-    const updatedDoc = await this.sortedDataModel.findByIdAndUpdate(
-      id,
+    const updatedDoc = await this.sortedDataModel.updateMany(
+      {orderId},
       { statusQS: newStatus },
       { new: true },
     );
 
     if (!updatedDoc) {
-      throw new Error(`No document found with id: ${id}`);
+      throw new Error(`No document found with id: ${orderId}`);
     }
 
     return updatedDoc;
@@ -267,7 +267,7 @@ export class KaspiApiService {
  * Updates order status to ASSEMBLE and modifies the relevant database records.
  */
   async updateOrderStatus(orderId: string, authToken: string): Promise<any> {
-    const url = 'https://kaspi.kz/shop/api/v2/orders';
+    const url = 'https://kaspi.kz/shop/api/v2/orders?page[number]=0&page[size]=20';
     const payload = {
       data: {
         type: 'orders',
@@ -285,7 +285,7 @@ export class KaspiApiService {
     const config: AxiosRequestConfig = {
       headers: {
         'Content-Type': 'application/json',
-        'X-Auth-Token': 'YOUR_KASPI_API_TOKEN',
+        'X-Auth-Token': authToken,
         Accept: 'application/vnd.api+json',
       },
     };
