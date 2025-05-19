@@ -3,6 +3,7 @@ import { AuthService } from './auth.servise';
 import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto, LoginDto } from './dtos/auth.dto'; 
 import { User } from './dtos/user.schema';
+import { AutoOrg } from './dtos/autocreateorg.shema';
 
 @ApiTags('Authentication')
 @Controller()
@@ -32,12 +33,15 @@ export class AuthController {
   @ApiBody({ type: RegisterDto })
   @ApiResponse({ status: 201, type: User })
   async register(@Body() body: RegisterDto) {
+    const autoOrg = new AutoOrg(body.autoOrg);
+
     const user = await this.authService.register(
       body.email,
       body.firstName,
       body.lastName,
       body.password,
       body.phoneNumber,
+      body.autoOrg || new AutoOrg()
     );
     return { message: 'User registered successfully', user};
   }

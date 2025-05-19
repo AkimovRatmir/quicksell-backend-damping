@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BotBazaModule } from './botbaza/product.module';
 import { Product } from './botbaza/dtos/product.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BotModule } from './magic/bot.module';
 
 
 @Module({
@@ -27,6 +28,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     OrganizationModule,
     OrderCollectionModule ,
     BotBazaModule,
+    BotModule,
 
     ConfigModule.forRoot({
       isGlobal: true,

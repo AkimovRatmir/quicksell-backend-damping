@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Organization } from './dtos/organization.schema';
 import { Product } from 'src/botbaza/dtos/product.entity';
+import { encrypt } from 'src/utils/crypto.util';
 
 @Injectable()
 export class OrganizationService {
@@ -11,7 +12,21 @@ export class OrganizationService {
   @InjectModel(Product.name) private productModel: Model<Product>,
   ) {}
 
-  async createOrganization(organizationID: string, email: string, phoneNumber: string): Promise<Organization> {
+  async createOrganization(
+    organizationID: string, 
+    email: string, 
+    phoneNumber: string,
+    KaspiToken: string,
+    isPaid: string,
+    capacity: number,
+    minPriceGlob: number,
+    stepGlob: number,
+    maxPriceGlob: number,
+    isOn: string,
+    kaspiLoginEmail: string,
+    kaspiPasswordEncrypted: string
+
+    ): Promise<Organization> {
     const existingOrganization = await this.organizationModel.findOne({ organizationID });
     if (existingOrganization) {
       throw new BadRequestException('Organization already exists');
@@ -38,7 +53,9 @@ export class OrganizationService {
     isOnDemo?: string,
     stepGlob?: number,
     minPriceGlob?: number,
-    maxPriceGlob?: number
+    maxPriceGlob?: number,
+    kaspiLoginEmail?: string,
+    kaspiPasswordPlain?: string
   ): Promise<Organization> {
     const updateFields: any = {
       KaspiToken, isPaid, capacity, isOn, stepGlob, minPriceGlob, maxPriceGlob
@@ -59,6 +76,15 @@ export class OrganizationService {
       if (now > oneWeekLater) {
         updateFields.isOnDemo = 'off';
       }
+    }
+
+    if (kaspiLoginEmail) {
+      updateFields.kaspiLoginEmail = kaspiLoginEmail;
+    }
+    
+    if (kaspiPasswordPlain) {
+      const secret = process.env.ENCRYPTION_SECRET || 'default_fallback_secret';
+      updateFields.kaspiPasswordEncrypted = encrypt(kaspiPasswordPlain, secret);
     }
 
     //stepGlob logic

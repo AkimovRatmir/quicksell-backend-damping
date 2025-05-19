@@ -5,13 +5,15 @@ import { CreateOrganizationDto, UpdateOrganizationDto } from './dtos/organizatio
 import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UseGuards, Req } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-
+import { BotService } from '../magic/bot.service';
 
 @ApiTags('Organizations')
 @ApiBearerAuth('access-token')
 @Controller('organizations')
 export class OrganizationController {
-  constructor(private readonly organizationService: OrganizationService) {}
+  constructor(private readonly organizationService: OrganizationService,
+    private readonly botService: BotService,  
+    ) {}
 
   @Get('orgs')
   @ApiOperation({ summary: 'Get all organizations' })
@@ -74,7 +76,7 @@ export class OrganizationController {
   @ApiResponse({ status: 200, type: Organization })
   async updateOrganization(@Body() body: UpdateOrganizationDto, @Req() req) {
     const { organizationID } = req.user;
-    const { KaspiToken, isPaid, capacity, isOn, isOnDemo, stepGlob, minPriceGlob, maxPriceGlob } = body;
+    const { KaspiToken, isPaid, capacity, isOn, isOnDemo, stepGlob, minPriceGlob, maxPriceGlob, kaspiLoginEmail, kaspiPasswordPlain } = body;
     
     if ( isPaid == "true" || isPaid == "false")
       return this.organizationService.updateOrganization(
@@ -86,11 +88,30 @@ export class OrganizationController {
         isOnDemo,
         stepGlob,
         minPriceGlob,
-        maxPriceGlob
+        maxPriceGlob,
+        body.kaspiLoginEmail,
+        body.kaspiPasswordPlain
       );
     else {
         throw new BadRequestException('should include right isPaid info')
       }
         
   }
+
+  @Post('start-bot')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Start Python bot for current organization' })
+  @ApiBearerAuth('access-token')
+  @ApiResponse({ status: 200, description: 'Bot started successfully' })
+  async startBot(@Req() req) {
+    const { organizationID } = req.user;
+
+    if (!organizationID) {
+      throw new BadRequestException('Organization ID not found in token');
+    }
+
+    this.botService.runBot(organizationID);
+    return { message: `Bot started for organization ${organizationID}` };
+  }
+
 }

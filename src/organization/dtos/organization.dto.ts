@@ -46,4 +46,9 @@ export class UpdateOrganizationDto {
   maxPriceGlob?: number;
 
 
+  @ApiProperty({ required: false, example: 'kaspi@example.com' })
+  kaspiLoginEmail?: string;
+
+  @ApiProperty({ required: false, example: 'kaspiPassword123' })
+  kaspiPasswordPlain?: string;
 }

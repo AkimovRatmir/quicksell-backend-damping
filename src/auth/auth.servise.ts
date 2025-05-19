@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { OrganizationService } from '../organization/organization.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { AutoOrg } from './dtos/autocreateorg.shema';
 
 @Injectable()
 export class AuthService {
@@ -32,7 +33,7 @@ export class AuthService {
     lastName: string,
     password: string,
     phoneNumber: string,
-    role: string = 'user',
+    autoOrg: AutoOrg
   ): Promise<User> {
     const existingUser = await this.userModel.findOne({ $or: [{ email }, { phoneNumber }] });
     if (existingUser) {
@@ -59,9 +60,18 @@ export class AuthService {
         savedUser.organizationID,
         email,
         phoneNumber,
+        autoOrg.KaspiToken ?? '',
+        autoOrg.isPaid ?? 'false',
+        autoOrg.capacity ?? 0,
+        autoOrg.minPriceGlob ?? 0,
+        autoOrg.stepGlob ?? 0,
+        autoOrg.maxPriceGlob ?? 0,
+        autoOrg.isOn ?? 'off',
+        autoOrg.kaspiLoginEmail ?? '',
+        autoOrg.kaspiPasswordEncrypted ?? '',
       );
     } catch (error) {
-      throw new BadRequestException('Failed to create organization');
+      throw new BadRequestException('Failed to create organization', error.message);
     }
 
     return savedUser;
