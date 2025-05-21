@@ -110,8 +110,29 @@ export class OrganizationController {
       throw new BadRequestException('Organization ID not found in token');
     }
 
+    await this.organizationService.updateIsOn(organizationID, 'on');
+
     this.botService.runBot(organizationID);
     return { message: `Bot started for organization ${organizationID}` };
   }
+
+  // Add inside OrganizationController
+
+  @Post('stop-bot')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'stop the bot for current org' })
+  @ApiBearerAuth('access-token')
+  @ApiResponse({ status: 200, description: 'bot stopped successfully' })
+  async stopBot(@Req() req) {
+    const { organizationID } = req.user;
+
+    if (!organizationID) {
+      throw new BadRequestException('Organization ID not found in token');
+    }
+
+    await this.organizationService.updateIsOn(organizationID, 'off');
+    return { message: `Bot stop requested for ${organizationID}` };
+  }
+
 
 }

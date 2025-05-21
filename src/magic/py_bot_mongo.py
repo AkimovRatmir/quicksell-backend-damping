@@ -325,7 +325,7 @@ async def get_product_url_and_sku(page, product_name):
 
 async def analyze_and_update_price(page, product_name, product_url, current_price, product_sku):
     #increase = get_increase_from_db(product_sku)
-
+    
     try:
         full_url = f"https://kaspi.kz{product_url}"
         await page.goto(full_url)
@@ -358,6 +358,8 @@ async def analyze_and_update_price(page, product_name, product_url, current_pric
 
 
 async def adjust_price(page, product_name, competitor_price, product_sku):
+    
+
     try:
         min_price = get_min_price_from_db(product_sku)
         max_price = get_max_price_from_db(product_sku)
@@ -447,7 +449,7 @@ async def adjust_price(page, product_name, competitor_price, product_sku):
                 print(f"Не удалось обновить цену в базе данных MongoDB для товара '{product_name}'")
         else:
             print(f"Действие не выполнено для товара '{product_name}', потому что decrease установлен в 'off' or the increase is set to 'off'.")
-         
+        
 
     except Exception as e:
         print(f"Ошибка при обновлении цены для товара '{product_name}': {e}")
@@ -512,6 +514,13 @@ async def write_and_save_to_db(data):
 async def get_all_product_info(page):
     current_page = 1
     while True:
+        isOn = get_isOn()
+        is_paid = get_user_tarif()
+        isOnDemo = get_isOnDemo()
+
+        if isOn != "on" and (is_paid == "true" or isOnDemo == "on"):
+            print("⛔ Bot is turned off remotely. Exiting.")
+            break
         await page.goto(f'https://kaspi.kz/mc/#/products/active/{current_page}')
         await page.wait_for_load_state('networkidle')
         await asyncio.sleep(2)
@@ -578,7 +587,7 @@ async def main():
     isOn = get_isOn()
     isOnDemo = get_isOnDemo()
 
-    if is_paid == "true" and (isOn == "on" or isOnDemo == "on"):
+    if  isOn == "on" and (is_paid == "true" or isOnDemo == "on"):
         print("Пользователь оплатил тариф. Запуск бота...")
         async with async_playwright() as playwright:
             await process_products(playwright)

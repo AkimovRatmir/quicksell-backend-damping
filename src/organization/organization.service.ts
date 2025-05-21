@@ -158,6 +158,16 @@ export class OrganizationService {
       { new: true }
     );
   }
+
+  // Add inside OrganizationService
+
+async updateIsOn(organizationID: string, state: 'on' | 'off') {
+  return this.organizationModel.updateOne(
+    { organizationID: organizationID },
+    { $set: { isOn: state } }
+  );
+}
+
   
   
 
