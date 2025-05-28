@@ -76,6 +76,13 @@ def connect_db_organization():
         print(f"Error connecting to MongoDB: {e}")
         return None
 
+
+async def block_unnecessary_resources(page):
+    await page.route("**/*", lambda route: (
+        route.abort() if route.request.resource_type in ['stylesheet', 'image', 'font'] else route.continue_()
+    ))
+
+
 def get_user_tarif():
     collection_orgs = connect_db_organization()
     if collection_orgs is not None: 
@@ -149,7 +156,65 @@ def get_isOn():
         print(f"cannot connect to the collection organizathanions")
         return None
 
+def get_minPriceGlob():
+    collection_orgs = connect_db_organization()
+    if collection_orgs is not None:
+        organization = collection_orgs.find_one({
+            "organizationID": CURRENT_ORGANIZATION_ID
+        })
 
+        if not "minPriceGlob" in organization:
+            minPriceGlob = 10
+            return minPriceGlob
+
+        if organization and "minPriceGlob" in organization:
+            return str(organization["minPriceGlob"])
+        else:
+            print(f"the minPriceGlob is not found for the org: {CURRENT_ORGANIZATION_ID}")
+            
+    else: 
+        print(f"cannot connect to the collection organizathanions")
+        return None
+    
+def get_maxPriceGlob():
+    collection_orgs = connect_db_organization()
+    if collection_orgs is not None:
+        organization = collection_orgs.find_one({
+            "organizationID": CURRENT_ORGANIZATION_ID
+        })
+
+        if not "maxPriceGlob" in organization:
+            maxPriceGlob = 10
+            return maxPriceGlob
+
+        if organization and "maxPriceGlob" in organization:
+            return str(organization["maxPriceGlob"])
+        else:
+            print(f"the maxPriceGlob is not found for the org: {CURRENT_ORGANIZATION_ID}")
+            
+    else: 
+        print(f"cannot connect to the collection organizathanions")
+        return None
+    
+def get_stepGlob():
+    collection_orgs = connect_db_organization()
+    if collection_orgs is not None:
+        organization = collection_orgs.find_one({
+            "organizationID": CURRENT_ORGANIZATION_ID
+        })
+
+        if not "stepGlob" in organization:
+            stepGlob = 1
+            return stepGlob
+
+        if organization and "stepGlob" in organization:
+            return str(organization["stepGlob"])
+        else:
+            print(f"the stepGlob is not found for the org: {CURRENT_ORGANIZATION_ID}")
+            
+    else: 
+        print(f"cannot connect to the collection organizathanions")
+        return None
 
 def get_decrease_from_db(product_sku):
     collection_prod = connect_db()
@@ -259,27 +324,29 @@ if not login_email or not password:
 
 
 async def login(page):
+    # await block_unnecessary_resources(page)
+
     await page.goto('https://kaspi.kz/mc/#/login')
     await page.wait_for_load_state('networkidle')
     await asyncio.sleep(1)
 
     await page.click('input#user_email_field')
     await page.fill('input#user_email_field', login_email)
-    await asyncio.sleep(1)
+    await asyncio.sleep(0)
 
     await page.click('button.button.is-primary')
     await page.wait_for_selector('input#password_field', timeout=10000)
     await page.fill('input#password_field', password)
-    await asyncio.sleep(1)
+    await asyncio.sleep(0)
     
     await page.click('button.button.is-primary')
     await page.wait_for_load_state('networkidle')
-    await asyncio.sleep(2)
+    await asyncio.sleep(0)
 
     # Переход на страницу активных товаров после логина
     await page.goto('https://kaspi.kz/mc/#/products/active/1')
     await page.wait_for_load_state('networkidle')
-    await asyncio.sleep(2)
+    await asyncio.sleep(0)
 
 
 async def get_product_url_and_sku(page, product_name):
@@ -287,7 +354,7 @@ async def get_product_url_and_sku(page, product_name):
         print(f"Ищем продукт с именем: {product_name}")
         await page.click(f"//a[contains(text(), '{product_name}')]")
         await page.wait_for_load_state('networkidle')
-        await asyncio.sleep(2)
+        await asyncio.sleep(0.5)
 
         # Извлечение URL товара
         locator = page.locator(
@@ -330,7 +397,7 @@ async def analyze_and_update_price(page, product_name, product_url, current_pric
         full_url = f"https://kaspi.kz{product_url}"
         await page.goto(full_url)
         await page.wait_for_load_state('networkidle')
-        await asyncio.sleep(2)
+        await asyncio.sleep(0)
 
         # Получаем текущую цену товара на странице
         price_selector = '#ItemView > div.item > div > div.item__inner-right > div > div:nth-child(1) > div.item__price > div.item__price-left-side > div.item__price-once'
@@ -397,11 +464,11 @@ async def adjust_price(page, product_name, competitor_price, product_sku):
         await page.goto(offer_update_url)
         print(f"Перехожу на страницу изменения товара: {offer_update_url}")
         await page.wait_for_load_state('networkidle')
-        await asyncio.sleep(1)
+        await asyncio.sleep(0)
 
         await page.reload()
         await page.wait_for_load_state('networkidle')
-        await asyncio.sleep(1)
+        await asyncio.sleep(0)
 
         price_change_selector = '#app > section > div.main-content > div > div.master-product__content > div:nth-child(3) > div:nth-child(2) > div > button > span'
         price_change_input = await page.wait_for_selector(price_change_selector, timeout=10000)
@@ -413,19 +480,19 @@ async def adjust_price(page, product_name, competitor_price, product_sku):
         await page.keyboard.press("Control+A")
         await page.keyboard.press("Backspace")
         print(f"Поле для ввода цены очищено.")
-        await asyncio.sleep(1)
+        await asyncio.sleep(0)
 
         formatted_price = str(int(new_price))
         print(f"Вводим новую цену: {formatted_price} ₸")
         await price_input.type(formatted_price)
-        await asyncio.sleep(1)
+        await asyncio.sleep(0)
 
         save_button_selector = 'button.button.is-primary span:has-text("Сохранить")'
         await page.wait_for_selector(save_button_selector, timeout=10000)
         await page.click(save_button_selector)
         print(f"Нажата кнопка 'Сохранить' для товара '{product_name}' с новой ценой.")
         await page.wait_for_load_state('networkidle')
-        await asyncio.sleep(1)
+        await asyncio.sleep(0)
 
         print(f'Цена для товара {product_name} обновлена до {new_price} ₸ на сайте.')
 
@@ -457,16 +524,24 @@ async def adjust_price(page, product_name, competitor_price, product_sku):
 
 async def write_and_save_to_db(data):
     product_name = data[0]  # Название товара
+    minGlob = get_minPriceGlob()
+    maxGlob = get_maxPriceGlob()
+    stepGlob = get_stepGlob()
 
-    # if not minPriceGlob:
-    #     minPriceGlob = 10 
-    # else:
-    #     minPriceGlob = int(minPriceGlob)
+    if not minGlob:
+        minGlob = 10  # Default 10% if not found
+    else:
+        minGlob = int(minGlob)
 
-    # if not stepGlob:
-    #     stepGlob = 1 
-    # else:
-    #     stepGlob = int(stepGlob)
+    if not maxGlob:
+        maxGlob = 10  # Default 10% if not found
+    else:
+        maxGlob = int(maxGlob)
+
+    if not stepGlob:
+        stepGlob = 1  # Default step if not found
+    else:
+        stepGlob = int(stepGlob)
 
     collection_prod = connect_db()
     if collection_prod is not None:
@@ -504,69 +579,94 @@ async def write_and_save_to_db(data):
                 "image_url": data[5],
                 "decrease": "off",
                 "increase": "off",
-                "min_price": 0,
-                "step": 1,
+                "min_price": round(int(data[2]) * (1 - minGlob / 100)),
+                "max_price": round(int(data[2]) * (1 + maxGlob / 100)),
+                "step": stepGlob,
             }
             collection_prod.insert_one(new_product)
             print(f"✅ Добавлен новый товар '{product_name}'.")
 
 
-async def get_all_product_info(page):
-    current_page = 1
+async def get_all_product_info(page, playwright):
     while True:
         isOn = get_isOn()
         is_paid = get_user_tarif()
         isOnDemo = get_isOnDemo()
 
-        if isOn != "on" and (is_paid == "true" or isOnDemo == "on"):
-            print("⛔ Bot is turned off remotely. Exiting.")
+        if isOn != "on" or (is_paid != "true" and isOnDemo != "on"):
+            print("⛔ Bot is turned off remotely or access denied. Exiting.")
             break
-        await page.goto(f'https://kaspi.kz/mc/#/products/active/{current_page}')
-        await page.wait_for_load_state('networkidle')
-        await asyncio.sleep(2)
 
-        current_page_products = await page.evaluate('''() => {
-            return Array.from(document.querySelectorAll('tr')).map(row => {
-                const productNameElement = row.querySelector('td[data-label="Товар"] p.is-5 a');
-                const productName = productNameElement ? productNameElement.innerText.trim() : null;
-                const productPriceElement = row.querySelector('td[data-label="Цена, тенге"] p.subtitle.is-5');
-                const productPrice = productPriceElement ? parseFloat(productPriceElement.innerText.replace('₸', '').replace(' ', '').replace(' ', '').trim()) : null;
-                if (productName && productPrice !== null) {
-                    return { productName, productPrice };
-                } else {
-                    return null;
-                }
-            }).filter(product => product !== null);
-        }''')
+        print("🔁 Начинаем новый цикл сканирования всех товаров...")
+        await page.goto(f'https://kaspi.kz/mc/#/products/active/1')
+        current_page = 1
+        new_instance_started = False 
 
-        if not current_page_products:
-            print("На текущей странице нет товаров.")
-            break
-        
-        for idx, product in enumerate(current_page_products, start=2):
-            product_url, product_sku, product_image_url = await get_product_url_and_sku(page, product['productName'])
-            if product_url:
-                competitor_price = await analyze_and_update_price(page, product['productName'], product_url, product['productPrice'], product_sku)
-                if competitor_price is not None:
-                    data = [product['productName'], f"https://kaspi.kz{product_url}", product['productPrice'], competitor_price, product_sku, product_image_url]
-                    print(f"Записываем данные в базу данных: {data}")
-                    await write_and_save_to_db(data)
-            else:
-                print(f"Не удалось получить URL для товара: {product['productName']}")
-
+        while True:
             await page.goto(f'https://kaspi.kz/mc/#/products/active/{current_page}')
             await page.wait_for_load_state('networkidle')
-            await asyncio.sleep(2)
+            await asyncio.sleep(0.5)
 
-        next_button = await page.query_selector('#offers-table > div.level-right > div > nav > a.pagination-link.pagination-next')
-        if next_button:
-            current_page += 1
-            await next_button.click()
-            await page.wait_for_load_state('networkidle')
-            await asyncio.sleep(2)
-        else:
-            print("Все страницы обработаны.")
-            break
+            # 👇 Test condition: spawn new bot after page 1
+            if current_page == 10 and not new_instance_started:
+                new_instance_started = True
+                print("🚀 Запускаем новый экземпляр бота (тестовая логика после 1 страницы)...")
+                asyncio.create_task(process_products(playwright))
+
+            current_page_products = await page.evaluate('''() => {
+                return Array.from(document.querySelectorAll('tr')).map(row => {
+                    const productNameElement = row.querySelector('td[data-label="Товар"] p.is-5 a');
+                    const productName = productNameElement ? productNameElement.innerText.trim() : null;
+                    const productPriceElement = row.querySelector('td[data-label="Цена, тенге"] p.subtitle.is-5');
+                    const productPrice = productPriceElement ? parseFloat(productPriceElement.innerText.replace('₸', '').replace(' ', '').replace(' ', '').trim()) : null;
+                    if (productName && productPrice !== null) {
+                        return { productName, productPrice };
+                    } else {
+                        return null;
+                    }
+                }).filter(product => product !== null);
+            }''')
+
+            if not current_page_products:
+                print("❌ На текущей странице нет товаров.")
+                break
+
+            for product in current_page_products:
+                try:
+                    product_url, product_sku, product_image_url = await get_product_url_and_sku(page, product['productName'])
+                    if product_url:
+                        competitor_price = await analyze_and_update_price(page, product['productName'], product_url, product['productPrice'], product_sku)
+                        if competitor_price is not None:
+                            data = [product['productName'], f"https://kaspi.kz{product_url}", product['productPrice'], competitor_price, product_sku, product_image_url]
+                            print(f"Записываем данные в базу данных: {data}")
+                            await write_and_save_to_db(data)
+
+                            await page.goto(f'https://kaspi.kz/mc/#/products/active/{current_page}')
+                            await page.wait_for_load_state('networkidle')
+                            await asyncio.sleep(0.5)
+                    else:
+                        print(f"⚠️ Не удалось получить URL для товара: {product['productName']}")
+                except Exception as e:
+                    print(f"❌ Ошибка при обработке товара '{product['productName']}': {e}")
+
+
+            # ✅ Don't reload the same page again during loop
+            next_button = await page.query_selector('a.pagination-link.pagination-next')
+
+            # Make sure it's not disabled
+            if next_button:
+                is_disabled = await next_button.get_attribute('disabled')
+                if is_disabled:
+                    print("✅ Все страницы обработаны. Ждем перед новым циклом...")
+                    break  # End the pagination loop
+                else:
+                    current_page += 1
+                    await next_button.click()
+                    await page.wait_for_load_state('networkidle')
+                    await asyncio.sleep(1)
+            else:
+                print("⚠️ Кнопка 'Следующая' не найдена. Завершаем цикл.")
+                break
 
 
 async def process_products(playwright):
@@ -574,10 +674,11 @@ async def process_products(playwright):
     browser = await playwright.chromium.launch(headless=False)
     page = await browser.new_page()
 
+
     await login(page)
 
     print("Переход на страницу активных товаров...")
-    await get_all_product_info(page)
+    await get_all_product_info(page, playwright)
 
     await browser.close()
 

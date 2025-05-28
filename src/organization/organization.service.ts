@@ -32,7 +32,21 @@ export class OrganizationService {
       throw new BadRequestException('Organization already exists');
     }
 
-    const organization = new this.organizationModel({ organizationID, email, phoneNumber });
+    const organization = new this.organizationModel({
+      organizationID,
+      email,
+      phoneNumber,
+      KaspiToken,
+      isPaid,
+      capacity,
+      minPriceGlob,
+      stepGlob,
+      maxPriceGlob,
+      isOn,
+      kaspiLoginEmail,
+      kaspiPasswordEncrypted
+    });
+    
     return organization.save();
   }
 

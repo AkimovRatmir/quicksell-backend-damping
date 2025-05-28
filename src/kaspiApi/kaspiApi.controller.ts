@@ -75,6 +75,41 @@ export class KaspiApiController {
     return await this.kaspiApiService.updateOrderStatus(orderId, authToken);
   }
 
+  @Post('cancel-order')
+  @ApiOperation({ summary: 'Cancel an order' })
+  @ApiBody({
+    schema: {
+      example: {
+        orderId: 'orderId',
+        code: 'string',
+        reason: 'BUYER_NOT_REACHABLE',
+        comment: 'Customer unreachable after multiple calls',
+      },
+    },
+  })
+
+  async cancelOrder(
+    @Body('orderId') orderId: string,
+    @Body('code') code: string,
+    @Body('reason') reason: string,
+    @Body('comment') comment: string,
+    @Req() req,
+  ) {
+    const { organizationID } = req.user;
+    const organization = await this.organizationService.getOrgByID(organizationID);
+
+    if (!organization || !organization.KaspiToken) {
+      throw new BadRequestException('Kaspi Token not found');
+    }
+    if (!orderId || !code || !reason) {
+      throw new BadRequestException('orderId, code, and reason are required');
+    }
+
+    const authToken = organization.KaspiToken;
+    return await this.kaspiApiService.cancelOrder(orderId, code, reason, comment, authToken);
+  }
+
+
   @Get('orders')
   @ApiOperation({ summary: 'Fetch new Kaspi orders by date for logged in org' })
   @ApiQuery({ name: 'startDate', required: true })

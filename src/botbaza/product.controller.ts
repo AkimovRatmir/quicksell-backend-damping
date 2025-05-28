@@ -1,11 +1,16 @@
 // botbaza/product.controller.ts
 
-import { Controller, Get, Patch, Param, Body, Delete, Post, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Patch, Param, Body, Delete, Post, Req, UseGuards, Res, Query } from "@nestjs/common";
 import { BotBazaService } from "./product.servise";
 import { Product } from "./dtos/product.entity";
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from "@nestjs/swagger";
 import { UpdateProductDto } from "./dtos/update-product.dto";
 import { AuthGuard } from "@nestjs/passport";
+import axios, { AxiosResponse } from 'axios';  
+import { Response } from "express";
+import { Stream } from 'stream';
+
+
 
 @ApiTags('Products')
 @ApiBearerAuth('access-token')
@@ -21,6 +26,8 @@ export class BotBazaController {
     const { organizationID } = req.user;
     return this.botbazaServise.findAll(organizationID);
   }
+
+  
 
   @Post('create')
   @UseGuards(AuthGuard('jwt'))
@@ -58,6 +65,15 @@ export class BotBazaController {
     return this.botbazaServise.updateProduct(id, organizationID, updateProductDto);
   }
 
+
+  @Delete('delall')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'delete all products test only' })
+  deleteAll(@Req() req) {
+    const { organizationID } = req.user;
+    return this.botbazaServise.deleteAll(organizationID);
+  }
+
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Delete product by ID' })
@@ -66,4 +82,20 @@ export class BotBazaController {
     const { organizationID } = req.user;
     return this.botbazaServise.deleteOneProduct(id, organizationID);
   }
+
+  @Get('/proxy/image')
+  async proxyImage(@Query('url') url: string, @Res() res: Response) {
+    try {
+      const response: AxiosResponse<Stream> = await axios.get(url, {
+        responseType: 'stream',
+      });
+
+      res.setHeader('Content-Type', response.headers['content-type']);
+      response.data.pipe(res);
+    } catch (error) {
+      console.error('Image proxy failed:', error.message);
+      res.status(500).send('Failed to proxy image');
+    }
+  }
+
 }

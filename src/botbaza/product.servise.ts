@@ -45,6 +45,19 @@ export class BotBazaService {
     return `Deleted product with id ${id}`;
   }
 
+  async deleteAll(organizationID: string): Promise<any> {
+    try {
+      const delall = await this.productModel.deleteMany({ organizationID, });
+      return {
+        message: 'data deleted success',
+        deletedData: delall.deletedCount
+      };
+    } catch (error){
+      console.error('error deleting', error.message);
+      throw new Error('database deletion error')
+    }
+  }
+
   async createProduct(organizationID: string, productData: any): Promise<Product> {
     const createdProduct = new this.productModel({ ...productData, organizationID });
     return createdProduct.save();

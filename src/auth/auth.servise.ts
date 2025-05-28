@@ -7,6 +7,7 @@ import { OrganizationService } from '../organization/organization.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AutoOrg } from './dtos/autocreateorg.shema';
+import { encrypt } from 'src/utils/crypto.util'; 
 
 @Injectable()
 export class AuthService {
@@ -33,14 +34,21 @@ export class AuthService {
     lastName: string,
     password: string,
     phoneNumber: string,
-    autoOrg: AutoOrg
+    autoOrg?: Partial<AutoOrg>
   ): Promise<User> {
+
+    const orgConfig = new AutoOrg(autoOrg);
+
     const existingUser = await this.userModel.findOne({ $or: [{ email }, { phoneNumber }] });
     if (existingUser) {
       throw new BadRequestException('Email or phone number is already in use');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const secret = this.configService.get<string>('ENCRYPTION_SECRET');
+    if (!secret) {
+      throw new Error('Missing encryption secret key (super_secret_key) in environment');
+    }
 
     const user = new this.userModel({
       email,
@@ -53,6 +61,8 @@ export class AuthService {
     });
 
     const savedUser = await user.save();
+    const kaspiLoginEmail = email;
+    const kaspiPasswordPlain = encrypt(password, secret)
 
     // Automatically create organization
     try {
@@ -60,15 +70,15 @@ export class AuthService {
         savedUser.organizationID,
         email,
         phoneNumber,
-        autoOrg.KaspiToken ?? '',
-        autoOrg.isPaid ?? 'false',
-        autoOrg.capacity ?? 0,
-        autoOrg.minPriceGlob ?? 0,
-        autoOrg.stepGlob ?? 0,
-        autoOrg.maxPriceGlob ?? 0,
-        autoOrg.isOn ?? 'off',
-        autoOrg.kaspiLoginEmail ?? '',
-        autoOrg.kaspiPasswordEncrypted ?? '',
+        orgConfig.KaspiToken ?? '',
+        orgConfig.isPaid ?? 'false',
+        orgConfig.capacity ?? 0,
+        orgConfig.minPriceGlob ?? 0,
+        orgConfig.stepGlob ?? 0,
+        orgConfig.maxPriceGlob ?? 0,
+        orgConfig.isOn ?? 'off',
+        kaspiLoginEmail,
+        kaspiPasswordPlain 
       );
     } catch (error) {
       throw new BadRequestException('Failed to create organization', error.message);

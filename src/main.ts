@@ -8,7 +8,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS
-  app.enableCors();
+  app.enableCors({
+    origin: '*',           // Allow all origins
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: '*',   // Allow all headers
+  });
 
   const config = new DocumentBuilder()
   .setTitle('KaspiBot API')

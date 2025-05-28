@@ -326,5 +326,41 @@ export class KaspiApiService {
       throw new BadRequestException('Failed to update order status');
     }
   }
+
+
+  
+  async cancelOrder(orderId: string, orderCode: string, reason: string, comment: string, authToken: string): Promise<any> {
+    const url = 'https://kaspi.kz/shop/api/v2/orders';
+  
+    const payload = {
+      data: {
+        type: 'orders',
+        id: orderId,
+        attributes: {
+          code: orderCode,
+          status: 'CANCELLED',
+          cancellationReason: reason,
+          cancellationComment: comment || '',
+        },
+      },
+    };
+  
+    const config: AxiosRequestConfig = {
+      headers: {
+        'Content-Type': 'application/vnd.api+json',
+        'X-Auth-Token': authToken,
+        Accept: 'application/vnd.api+json',
+      },
+    };
+  
+    try {
+      const response = await lastValueFrom(this.httpService.post(url, payload, config));
+      return { message: 'Order cancelled successfully', response: response.data };
+    } catch (error) {
+      console.error('Error cancelling order:', error.response?.data || error.message);
+      throw new BadRequestException('Failed to cancel order');
+    }
+  }
+  
   
 }
