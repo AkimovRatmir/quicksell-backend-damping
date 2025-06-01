@@ -115,7 +115,7 @@ export class KaspiApiController {
   @ApiQuery({ name: 'startDate', required: true })
   @ApiQuery({ name: 'endDate', required: true })
   @ApiQuery({ name: 'state', required: false })
-  @ApiResponse({ status: 200, description: 'Array of order objects' })
+  @ApiResponse({ status: 200, description: 'Array of order IDs' })
   async getOrders(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
@@ -124,25 +124,21 @@ export class KaspiApiController {
   ) {
     const { organizationID } = req.user;
 
-
-    // const isValidOrganization = await this.organizationService.validateOrganizationID(organizationID);
-    // if (!isValidOrganization) {
-    //   console.error('Wrong token:', organizationID);
-    //   throw new BadRequestException(`Invalid organizationID: ${organizationID}`);
-    // }
-
     const states = ['NEW', 'SIGN_REQUIRED', 'PICKUP', 'DELIVERY', 'KASPI_DELIVERY', 'ARCHIVE'];
-    const results = await Promise.all(
-      states.map((state) =>
-        this.kaspiApiService
-          .getOrders(startDate, endDate, state, organizationID)
-          .catch((error) => {
-            console.error(`Error fetching orders for state ${state}:`, error.message);
-            return [];
-          }),
-      ),
-    );
+    const allFetched: string[] = [];
 
-    return results.filter((result) => result.length > 0);
+    for (const state of states) {
+      try {
+        const ids = await this.kaspiApiService.getOrders(startDate, endDate, state, organizationID);
+        allFetched.push(...ids);
+      } catch (error) {
+        console.error(`❌ Error in getOrders(${state}):`, error.message);
+      }
+    }
+
+    await this.kaspiApiService.cleanupStaleOrders(allFetched, organizationID);
+
+    return { message: 'Orders updated successfully', insertedCount: allFetched.length };
   }
+
 }

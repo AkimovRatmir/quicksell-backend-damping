@@ -25,7 +25,7 @@ export class KaspiApiService {
     endDate: string,
     state: string,
     organizationID: string,
-  ): Promise<any> {
+  ): Promise<string[]> {
     const url = 'https://kaspi.kz/shop/api/v2/orders';
     const params = {
       'page[number]': 0,
@@ -36,25 +36,14 @@ export class KaspiApiService {
       'filter[orders][signatureRequired]': 'true',
       'include[orders]': 'user',
     };
-
-    const deletedDataKaspi = await this.dataKaspiModel.deleteMany({
-      organizationID,
-    });
-    const deletedSortedData = await this.sortedDataModel.deleteMany({
-      organizationID,
-    });
-
-    console.log('Deleted old data for the organization: $(organizationID)', 
-    deletedDataKaspi.deletedCount, deletedSortedData.deletedCount );
-
+  
     const organization = await this.organizationModel.findOne({ organizationID }).exec();
-      if (!organization || !organization.KaspiToken){
-        throw new Error('Kaspi Token not found for the organization: ${organizationID}')
-      }
-
-      const authToken = organization.KaspiToken;
-
-
+    if (!organization || !organization.KaspiToken) {
+      throw new Error(`Kaspi Token not found for org: ${organizationID}`);
+    }
+  
+    const authToken = organization.KaspiToken;
+  
     const config: AxiosRequestConfig = {
       headers: {
         'Content-Type': 'application/vnd.api+json',
@@ -63,31 +52,67 @@ export class KaspiApiService {
       },
       params,
     };
-
+  
     try {
       const response = await lastValueFrom(this.httpService.get(url, config));
-      const orders = response.data.data;
-
-      if (!orders || orders.length === 0) {
-        console.warn(`No orders found for state ${state}`);
+      const newOrders = response.data.data;
+  
+      if (!newOrders || newOrders.length === 0) {
+        console.warn(`No new orders found for state ${state}`);
         return [];
       }
-
-      // Process orders and save them to MongoDB
-      const asyncLoaders = orders.map(async (order) => {
+  
+      const existingKaspi = await this.dataKaspiModel.find({ organizationID }, 'orderId');
+      const existingKaspiSet = new Set(existingKaspi.map((doc) => doc.orderId));
+  
+      const fetchedOrderIds: string[] = [];
+  
+      for (const order of newOrders) {
+        const orderId = order.id;
+        if (!orderId) continue;
+  
+        // ✅ Always track orderId as fetched to prevent deletion
+        fetchedOrderIds.push(orderId);
+  
+        if (existingKaspiSet.has(orderId)) {
+          console.log(`⏩ Skipped (already exists): ${orderId}`);
+          continue;
+        }
+  
+        console.log(`✅ New order found, saving: ${orderId}`);
         await this.saveToMongoDB(order, organizationID, state, authToken);
-      });
-
-      await Promise.all(asyncLoaders);
-      return orders;
+      }
+  
+      return fetchedOrderIds;
     } catch (error) {
-      console.error(
-        'Error in getOrders:',
-        error.response?.data || error.message,
-      );
+      console.error('❌ Error in getOrders:', error.response?.data || error.message);
       return [];
     }
   }
+  
+  
+  
+  
+  async cleanupStaleOrders(allFetchedOrderIds: string[], organizationID: string) {
+    console.log(`🧹 FINAL Cleanup. Keeping ${allFetchedOrderIds.length} orders`);
+  
+    const deletedSorted = await this.sortedDataModel.deleteMany({
+      organizationID,
+      orderId: { $nin: allFetchedOrderIds },
+    });
+  
+    const deletedKaspi = await this.dataKaspiModel.deleteMany({
+      organizationID,
+      orderId: { $nin: allFetchedOrderIds },
+    });
+  
+    console.log(`🗑️ [Final Cleanup] Deleted from sortedData: ${deletedSorted.deletedCount}`);
+    console.log(`🗑️ [Final Cleanup] Deleted from dataKaspi: ${deletedKaspi.deletedCount}`);
+  }
+  
+  
+  
+  
 
   /**
    * Method to save all data to db and sort to sorteddatas
@@ -97,17 +122,11 @@ export class KaspiApiService {
     organizationID: string,
     state: string,
     authToken: string,
-    ) {
+  ) {
     try {
-      // const organization = await this.organizationModel.findOne({ organizationID }).exec();
-      // if (!organization || !organization.KaspiToken){
-      //   throw new Error('Kaspi Token not found for the organization: ${organizationID}')
-      // }
-
-      // const authToken = organization.KaspiToken;
-
-      // Fetch entries for the order
       const orderEntriesUrl = `https://kaspi.kz/shop/api/v2/orders/${order.id}/entries`;
+      console.log(`📦 Fetching entries for orderId: ${order.id}`);
+  
       const entriesResponse = await lastValueFrom(
         this.httpService.get(orderEntriesUrl, {
           headers: {
@@ -117,86 +136,67 @@ export class KaspiApiService {
           },
         }),
       );
-
-      // Construct the full order object with entries
+  
+      const entries = entriesResponse.data.data || [];
+      console.log(`🔍 Entries fetched: ${entries.length} for orderId: ${order.id}`);
+  
       const fullOrderData = {
         organizationID,
         statusQS: 'offDelivery',
         statusFrom: state,
-        ...order, // Full order details
-        entries: entriesResponse.data.data || [], // Store related entries
+        orderId: order.id,
+        attributes: order.attributes,
+        relationships: order.relationships,
+        links: order.links,
+        data: entries,
       };
-
-      // Save full order object in datakaspis collection
+  
       await this.dataKaspiModel.create(fullOrderData);
-      // sSorting Logic: Extract key attributes and save to `sortedData`
-      const sortedData = entriesResponse.data.data.map((entry) => ({
-        organizationID: organizationID,
+      console.log(`📁 Saved to datakaspis: ${order.id}`);
+  
+      const sortedData = entries.map((entry) => ({
+        organizationID,
         statusQS: 'offDelivery',
         statusFrom: state,
         orderId: order.id,
         assemble: order.attributes?.assembled,
-        codeZK: order.attributes?.code || 'vlad idi nahui',
+        codeZK: order.attributes?.code || 'N/A',
         code: entry.attributes?.offer?.code || 'N/A',
         name: entry.attributes?.offer?.name || 'Unknown Product',
         quantity: entry.attributes?.quantity || 0,
         totalPrice: entry.attributes?.totalPrice || 0,
         paymentMode: order.attributes?.paymentMode || 'N/A',
-      
-        // Address details
         originFormattedAddress: order.attributes?.originAddress?.address?.formattedAddress || 'N/A',
         cityName: order.attributes?.originAddress?.city?.name || 'N/A',
         plannedDeliveryDate: order.attributes?.plannedDeliveryDate || null,
         creationDate: order.attributes?.creationDate || null,
-      
-        // Delivery details
         deliveryFormattedAddress: order.attributes?.deliveryAddress?.formattedAddress || 'N/A',
         deliveryStreetName: order.attributes?.deliveryAddress?.streetName || 'N/A',
         deliveryStreetNumber: order.attributes?.deliveryAddress?.streetNumber || 'N/A',
         deliveryTown: order.attributes?.deliveryAddress?.town || 'N/A',
-      
-        // Kaspi Delivery Info
         kaspiWaybill: order.attributes?.kaspiDelivery?.waybill || 'N/A',
         kaspiWaybillNumber: order.attributes?.kaspiDelivery?.waybillNumber || 'N/A',
-        
-        // Make sure that these fields are either null or a valid timestamp number
-        courierTransmissionDate: 
-          order.attributes?.kaspiDelivery?.courierTransmissionDate === 'N/A' 
-            ? null 
-            : order.attributes?.kaspiDelivery?.courierTransmissionDate,
-            
-        courierTransmissionPlanningDate: 
-          order.attributes?.kaspiDelivery?.courierTransmissionPlanningDate === 'N/A' 
-            ? null 
-            : order.attributes?.kaspiDelivery?.courierTransmissionPlanningDate,
-      
-        // Customer details
+        courierTransmissionDate: order.attributes?.kaspiDelivery?.courierTransmissionDate || null,
+        courierTransmissionPlanningDate: order.attributes?.kaspiDelivery?.courierTransmissionPlanningDate || null,
         customerName: order.attributes?.customer?.name || 'N/A',
         customerFirstName: order.attributes?.customer?.firstName || 'N/A',
         customerLastName: order.attributes?.customer?.lastName || 'N/A',
         customerCellPhone: order.attributes?.customer?.cellPhone || 'N/A',
-      
-        // Delivery Mode
         deliveryMode: order.attributes?.deliveryMode || 'N/A',
         deliveryCost: order.attributes?.deliveryCost || 0,
       }));
-      
-      // After modifying the data, save it to the database
+  
       if (sortedData.length > 0) {
-        try {
-          await this.sortedDataModel.insertMany(sortedData);
-          console.log('Sorted data saved successfully.');
-        } catch (error) {
-          console.error('Error saving sorted data:', error.message);
-        }
+        await this.sortedDataModel.insertMany(sortedData);
+        console.log(`✅ Inserted ${sortedData.length} sorted entries for orderId: ${order.id}`);
       } else {
-        console.log('No sorted data to save.');
+        console.log(`⚠️ No entries to sort for orderId: ${order.id}`);
       }
-                 
     } catch (error) {
-      console.error('Error saving order to MongoDB:', error.message);
+      console.error(`❌ Error saving order ${order.id}:`, error.message);
     }
   }
+  
 
   /**
    * Retrieves all data stored in MongoDB.

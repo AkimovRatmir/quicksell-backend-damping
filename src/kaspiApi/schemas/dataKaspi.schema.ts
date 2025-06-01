@@ -5,34 +5,28 @@ import { ApiProperty } from '@nestjs/swagger';
 @Schema()
 export class DataKaspi extends Document {
   @Prop({ required: true })
-  @ApiProperty()
   organizationID: string;
 
-  @Prop({ type: Object }) // Allow flexible object structure
-  @ApiProperty()
+  @Prop({ required: true }) // ✅ This line must be added
+  orderId: string;
+
+  @Prop({ type: Object })
   attributes: any;
 
-  @Prop({ type: Object }) // Allow flexible object structure
-  @ApiProperty()
+  @Prop({ type: Object })
   relationships: any;
 
-  @Prop({ type: Object }) // Allow flexible object structure
-  @ApiProperty()
+  @Prop({ type: Object })
   links: any;
 
   @Prop()
-  @ApiProperty()
   statusQS: string;
 
   @Prop()
-  @ApiProperty()
   statusFrom: string;
 
   @Prop({ type: Array, default: [] })
-  @ApiProperty()
-data: any[];
-
+  data: any[];
 }
 
 export const DataKaspiSchema = SchemaFactory.createForClass(DataKaspi);
-
