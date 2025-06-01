@@ -75,11 +75,11 @@ export class KaspiApiService {
         fetchedOrderIds.push(orderId);
   
         if (existingKaspiSet.has(orderId)) {
-          console.log(`⏩ Skipped (already exists): ${orderId}`);
+          // console.log(`⏩ Skipped (already exists): ${orderId}`);
           continue;
         }
   
-        console.log(`✅ New order found, saving: ${orderId}`);
+        // console.log(`✅ New order found, saving: ${orderId}`);
         await this.saveToMongoDB(order, organizationID, state, authToken);
       }
   
@@ -94,7 +94,7 @@ export class KaspiApiService {
   
   
   async cleanupStaleOrders(allFetchedOrderIds: string[], organizationID: string) {
-    console.log(`🧹 FINAL Cleanup. Keeping ${allFetchedOrderIds.length} orders`);
+    // console.log(`🧹 FINAL Cleanup. Keeping ${allFetchedOrderIds.length} orders`);
   
     const deletedSorted = await this.sortedDataModel.deleteMany({
       organizationID,
@@ -106,8 +106,8 @@ export class KaspiApiService {
       orderId: { $nin: allFetchedOrderIds },
     });
   
-    console.log(`🗑️ [Final Cleanup] Deleted from sortedData: ${deletedSorted.deletedCount}`);
-    console.log(`🗑️ [Final Cleanup] Deleted from dataKaspi: ${deletedKaspi.deletedCount}`);
+    // console.log(`🗑️ [Final Cleanup] Deleted from sortedData: ${deletedSorted.deletedCount}`);
+    // console.log(`🗑️ [Final Cleanup] Deleted from dataKaspi: ${deletedKaspi.deletedCount}`);
   }
   
   
@@ -125,7 +125,7 @@ export class KaspiApiService {
   ) {
     try {
       const orderEntriesUrl = `https://kaspi.kz/shop/api/v2/orders/${order.id}/entries`;
-      console.log(`📦 Fetching entries for orderId: ${order.id}`);
+      // console.log(`📦 Fetching entries for orderId: ${order.id}`);
   
       const entriesResponse = await lastValueFrom(
         this.httpService.get(orderEntriesUrl, {
@@ -138,7 +138,7 @@ export class KaspiApiService {
       );
   
       const entries = entriesResponse.data.data || [];
-      console.log(`🔍 Entries fetched: ${entries.length} for orderId: ${order.id}`);
+      // console.log(`🔍 Entries fetched: ${entries.length} for orderId: ${order.id}`);
   
       const fullOrderData = {
         organizationID,
@@ -152,7 +152,7 @@ export class KaspiApiService {
       };
   
       await this.dataKaspiModel.create(fullOrderData);
-      console.log(`📁 Saved to datakaspis: ${order.id}`);
+      // console.log(`📁 Saved to datakaspis: ${order.id}`);
   
       const sortedData = entries.map((entry) => ({
         organizationID,
@@ -188,7 +188,7 @@ export class KaspiApiService {
   
       if (sortedData.length > 0) {
         await this.sortedDataModel.insertMany(sortedData);
-        console.log(`✅ Inserted ${sortedData.length} sorted entries for orderId: ${order.id}`);
+        // console.log(`✅ Inserted ${sortedData.length} sorted entries for orderId: ${order.id}`);
       } else {
         console.log(`⚠️ No entries to sort for orderId: ${order.id}`);
       }
