@@ -12,32 +12,33 @@ export class BotService {
   ) {}
 
   runBot(organizationId: string): void {
-    const botPath = path.resolve(process.cwd(), 'src/magic/py_bot_mongo.py');
-    
-    const jwtPayload = { organizationID: organizationId };
-    const jwtSecret = this.configService.get<string>('JWT_SECRET') || this.configService.get('JWT_SECRET')
-    ;
+	  const pythonPath = path.resolve(process.cwd(), 'venv/bin/python3');  // 👉 Python interpreter
+	  const scriptPath = path.resolve(process.cwd(), 'src/magic/py_bot_mongo.py');  // 👉 Your bot script
 
-    const token = this.jwtService.sign(jwtPayload, {
-      secret: jwtSecret,
-      expiresIn: '10m', // optional
-    });
+	  const jwtPayload = { organizationID: organizationId };
+	  const jwtSecret = this.configService.get<string>('JWT_SECRET') || 'fallback_secret';
 
-    console.log(`Starting bot with JWT for org: ${organizationId}`);
-    console.log(`Bot script path: ${botPath}`);
+	  const token = this.jwtService.sign(jwtPayload, {
+	    secret: jwtSecret,
+	    expiresIn: '10m',
+	  });
 
-    const child = spawn('python3', [botPath, token]);
+	  console.log(`Starting bot with JWT for org: ${organizationId}`);
+	  console.log(`Bot script path: ${scriptPath}`);
 
-    child.stdout.on('data', (data) => {
-      console.log(`[BOT OUTPUT]: ${data.toString()}`);
-    });
+	  const child = spawn(pythonPath, [scriptPath, token]);  // ✅ Correctly launches the bot
 
-    child.stderr.on('data', (data) => {
-      console.error(`[BOT ERROR]: ${data.toString()}`);
-    });
+	  child.stdout.on('data', (data) => {
+	    console.log(`[BOT OUTPUT]: ${data.toString()}`);
+	  });
 
-    child.on('close', (code) => {
-      console.log(`Bot process exited with code ${code}`);
-    });
-  }
+	  child.stderr.on('data', (data) => {
+	    console.error(`[BOT ERROR]: ${data.toString()}`);
+	  });
+
+	  child.on('close', (code) => {
+	    console.log(`Bot process exited with code ${code}`);
+	  });
+	}
+
 }
