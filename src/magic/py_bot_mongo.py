@@ -671,7 +671,7 @@ async def get_all_product_info(page, playwright):
 
 async def process_products(playwright):
     print("Логинимся на сайт Kaspi.kz...")
-    browser = await playwright.chromium.launch(headless=True)
+    browser = await playwright.chromium.launch(headless=False)
     page = await browser.new_page()
 
 
