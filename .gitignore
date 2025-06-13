@@ -59,4 +59,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 py_bot_mongo.py
 bot.service.ts
 
+venv/
+
+
 docker-compose.yml
