@@ -16,6 +16,7 @@ export class SortedData extends Document {
   @ApiProperty()
   statusFrom: string;
 
+
   @Prop({ required: true })
   @ApiProperty()
   orderId: string;
@@ -23,6 +24,11 @@ export class SortedData extends Document {
   @Prop({ required: true })
   @ApiProperty()
   codeZK: string;
+
+
+  @Prop({ required: true })
+  @ApiProperty()
+  status: string;
 
   @Prop({ required: true })
   @ApiProperty()

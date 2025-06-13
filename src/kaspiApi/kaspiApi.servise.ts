@@ -27,16 +27,28 @@ export class KaspiApiService {
     organizationID: string,
   ): Promise<string[]> {
     const url = 'https://kaspi.kz/shop/api/v2/orders';
-    const params = {
-      'page[number]': 0,
-      'page[size]': 100,
-      'filter[orders][state]': state,
-      'filter[orders][creationDate][$ge]': startDate,
-      'filter[orders][creationDate][$le]': endDate,
-      'filter[orders][signatureRequired]': 'true',
-      'include[orders]': 'user',
-    };
-  
+    const isArchive = state === 'ARCHIVE';
+
+    const params = isArchive
+      ? {
+          'page[number]': 0,
+          'page[size]': 100,
+          'filter[orders][creationDate][$ge]': startDate,
+          'filter[orders][creationDate][$le]': endDate,
+          'filter[orders][state]': 'ARCHIVE',
+          'include[orders]': 'user',
+        }
+      : {
+          'page[number]': 0,
+          'page[size]': 100,
+          'filter[orders][state]': state,
+          'filter[orders][creationDate][$ge]': startDate,
+          'filter[orders][creationDate][$le]': endDate,
+          'filter[orders][signatureRequired]': 'true',
+          'include[orders]': 'user',
+        };
+
+      
     const organization = await this.organizationModel.findOne({ organizationID }).exec();
     if (!organization || !organization.KaspiToken) {
       throw new Error(`Kaspi Token not found for org: ${organizationID}`);
@@ -161,6 +173,7 @@ export class KaspiApiService {
         orderId: order.id,
         assemble: order.attributes?.assembled,
         codeZK: order.attributes?.code || 'N/A',
+        status: order.attributes?.status || 'N/A',
         code: entry.attributes?.offer?.code || 'N/A',
         name: entry.attributes?.offer?.name || 'Unknown Product',
         quantity: entry.attributes?.quantity || 0,
