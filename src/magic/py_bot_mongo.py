@@ -325,28 +325,21 @@ if not login_email or not password:
 
 async def login(page):
     # await block_unnecessary_resources(page)
-
     await page.goto('https://kaspi.kz/mc/#/login')
-    await page.wait_for_load_state('networkidle')
-    await asyncio.sleep(1)
+    await asyncio.sleep(3)  # Let the page breathe
 
-    await page.click('input#user_email_field')
+    await page.wait_for_selector('input#user_email_field', timeout=15000)
     await page.fill('input#user_email_field', login_email)
-    await asyncio.sleep(0)
-
     await page.click('button.button.is-primary')
-    await page.wait_for_selector('input#password_field', timeout=10000)
+
+    await page.wait_for_selector('input#password_field', timeout=15000)
     await page.fill('input#password_field', password)
-    await asyncio.sleep(0)
-    
     await page.click('button.button.is-primary')
-    await page.wait_for_load_state('networkidle')
-    await asyncio.sleep(0)
 
-    # Переход на страницу активных товаров после логина
+    await asyncio.sleep(3)
     await page.goto('https://kaspi.kz/mc/#/products/active/1')
-    await page.wait_for_load_state('networkidle')
-    await asyncio.sleep(0)
+    await page.wait_for_selector('tr', timeout=15000)
+
 
 
 async def get_product_url_and_sku(page, product_name):
@@ -671,7 +664,7 @@ async def get_all_product_info(page, playwright):
 
 async def process_products(playwright):
     print("Логинимся на сайт Kaspi.kz...")
-    browser = await playwright.chromium.launch(headless=True)
+    browser = await playwright.chromium.launch(headless=False)
     page = await browser.new_page()
 
 

@@ -52,13 +52,12 @@ pids
 *.seed
 *.pid.lock
 
+py_bot_mongo.py
+bot.service.ts
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 .env
 
-<<<<<<< HEAD
 docker-compose.yml
-=======
-docker-compose.yml
->>>>>>> c6abe07aca7df6bdda381702d8f3d839725f97fa

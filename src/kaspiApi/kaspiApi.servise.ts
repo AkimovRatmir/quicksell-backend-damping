@@ -58,7 +58,7 @@ export class KaspiApiService {
       const newOrders = response.data.data;
   
       if (!newOrders || newOrders.length === 0) {
-        console.warn(`No new orders found for state ${state}`);
+        console.warn(`No new orders found for state ${state} for the org: ${organizationID}`);
         return [];
       }
   
