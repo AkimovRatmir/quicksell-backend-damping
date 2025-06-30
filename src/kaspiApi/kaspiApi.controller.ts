@@ -109,6 +109,37 @@ export class KaspiApiController {
     return await this.kaspiApiService.cancelOrder(orderId, code, reason, comment, authToken);
   }
 
+  @Get('archive-data')
+  @ApiOperation({ summary: 'Get archived data for the logged in org' })
+  @ApiResponse({ status: 200, description: 'Archived Kaspi data' })
+  async getArchiveData(@Req() req) {
+    const { organizationID } = req.user;
+    if (!organizationID) {
+      throw new BadRequestException('Invalid token or missing organizationID');
+    }
+
+    return await this.kaspiApiService.getArchiveData(organizationID);
+  }
+
+
+  @Get('archive-orders')
+  @ApiOperation({ summary: 'Fetch archive Kaspi orders for logged in org' })
+  @ApiQuery({ name: 'startDate', required: true })
+  @ApiQuery({ name: 'endDate', required: true })
+  async getArchiveOrders(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Req() req,
+  ) {
+    const { organizationID } = req.user;
+    if (!organizationID) {
+      throw new BadRequestException('Invalid token or missing organizationID');
+    }
+
+    const inserted = await this.kaspiApiService.getArchiveOrders(startDate, endDate, organizationID);
+    return { message: 'Archive orders fetched successfully', count: inserted.length };
+  }
+
 
   @Get('orders')
   @ApiOperation({ summary: 'Fetch new Kaspi orders by date for logged in org' })
@@ -124,7 +155,7 @@ export class KaspiApiController {
   ) {
     const { organizationID } = req.user;
 
-    const states = ['NEW', 'SIGN_REQUIRED', 'PICKUP', 'DELIVERY', 'KASPI_DELIVERY', 'ARCHIVE'];
+    const states = ['NEW', 'SIGN_REQUIRED', 'PICKUP', 'DELIVERY', 'KASPI_DELIVERY'];
     const allFetched: string[] = [];
 
     for (const state of states) {

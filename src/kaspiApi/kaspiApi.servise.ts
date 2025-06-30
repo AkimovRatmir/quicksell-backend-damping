@@ -7,6 +7,7 @@ import { lastValueFrom } from 'rxjs';
 import { DataKaspi } from './schemas/dataKaspi.schema';
 import { SortedData } from './schemas/sortedData.schema';
 import { Organization } from 'src/organization/dtos/organization.schema';
+import { ArchiveKaspi } from './schemas/archiveKaspi.schema';
 
 @Injectable()
 export class KaspiApiService {
@@ -15,7 +16,10 @@ export class KaspiApiService {
     @InjectModel(DataKaspi.name) private dataKaspiModel: Model<DataKaspi>,
     @InjectModel(SortedData.name) private sortedDataModel: Model<SortedData>,
     @InjectModel(Organization.name) private organizationModel: Model<Organization>,
+    @InjectModel(ArchiveKaspi.name) private archiveKaspiModel: Model<ArchiveKaspi>,
   ) {}
+
+
 
   /**
    * Fetches orders for a given date range, state, and organizationID.
@@ -27,28 +31,17 @@ export class KaspiApiService {
     organizationID: string,
   ): Promise<string[]> {
     const url = 'https://kaspi.kz/shop/api/v2/orders';
-    const isArchive = state === 'ARCHIVE';
-
-    const params = isArchive
-      ? {
-          'page[number]': 0,
-          'page[size]': 100,
-          'filter[orders][creationDate][$ge]': startDate,
-          'filter[orders][creationDate][$le]': endDate,
-          'filter[orders][state]': 'ARCHIVE',
-          'include[orders]': 'user',
-        }
-      : {
-          'page[number]': 0,
-          'page[size]': 100,
-          'filter[orders][state]': state,
-          'filter[orders][creationDate][$ge]': startDate,
-          'filter[orders][creationDate][$le]': endDate,
-          'filter[orders][signatureRequired]': 'true',
-          'include[orders]': 'user',
-        };
-
-      
+  
+    const params = {
+      'page[number]': 0,
+      'page[size]': 100,
+      'filter[orders][state]': state,
+      'filter[orders][creationDate][$ge]': startDate,
+      'filter[orders][creationDate][$le]': endDate,
+      'filter[orders][signatureRequired]': 'true',
+      'include[orders]': 'user',
+    };
+  
     const organization = await this.organizationModel.findOne({ organizationID }).exec();
     if (!organization || !organization.KaspiToken) {
       throw new Error(`Kaspi Token not found for org: ${organizationID}`);
@@ -83,16 +76,12 @@ export class KaspiApiService {
         const orderId = order.id;
         if (!orderId) continue;
   
-        // ✅ Always track orderId as fetched to prevent deletion
         fetchedOrderIds.push(orderId);
   
-        if (existingKaspiSet.has(orderId)) {
-          // console.log(`⏩ Skipped (already exists): ${orderId}`);
-          continue;
-        }
+        if (existingKaspiSet.has(orderId)) continue;
   
-        // console.log(`✅ New order found, saving: ${orderId}`);
-        await this.saveToMongoDB(order, organizationID, state, authToken);
+        await this.saveToMongoDB(order, organizationID, state, authToken, this.dataKaspiModel);
+
       }
   
       return fetchedOrderIds;
@@ -101,6 +90,91 @@ export class KaspiApiService {
       return [];
     }
   }
+  
+
+
+  //Get archive models 
+  async getArchiveOrders(startDate: string, endDate: string, organizationID: string): Promise<string[]> {
+    const url = 'https://kaspi.kz/shop/api/v2/orders';
+  
+    const params = {
+      'page[number]': 0,
+      'page[size]': 100,
+      'filter[orders][creationDate][$ge]': startDate,
+      'filter[orders][creationDate][$le]': endDate,
+      'filter[orders][state]': 'ARCHIVE',
+      'include[orders]': 'user',
+    };
+  
+    const organization = await this.organizationModel.findOne({ organizationID }).exec();
+    if (!organization || !organization.KaspiToken) {
+      throw new Error(`Kaspi Token not found for org: ${organizationID}`);
+    }
+  
+    const authToken = organization.KaspiToken; 
+
+    const config: AxiosRequestConfig = {
+      headers: {
+        'Content-Type': 'application/vnd.api+json',
+        'X-Auth-Token': organization.KaspiToken,
+        Accept: 'application/vnd.api+json',
+      },
+      params,
+    };
+  
+    try {
+      const response = await lastValueFrom(this.httpService.get(url, config));
+      const orders = response.data.data;
+  
+      if (!orders || orders.length === 0) return [];
+  
+      const existing = await this.archiveKaspiModel.find({ organizationID }, 'orderId');
+      const existingSet = new Set(existing.map(doc => doc.orderId));
+  
+      const fetchedIds: string[] = [];
+  
+      for (const order of orders) {
+        const orderId = order.id;
+        if (!orderId) continue;
+        fetchedIds.push(orderId);
+  
+        if (existingSet.has(orderId)) continue;
+  
+        const entriesResponse = await lastValueFrom(
+          this.httpService.get(`${url}/${orderId}/entries`, { headers: config.headers })
+        );
+        const entries = entriesResponse.data.data || [];
+  
+        const archiveData = {
+          organizationID,
+          statusQS: 'offDelivery',
+          statusFrom: 'ARCHIVE',
+          orderId,
+          attributes: order.attributes,
+          relationships: order.relationships,
+          links: order.links,
+          data: entries,
+        };
+  
+        await this.archiveKaspiModel.create(archiveData);
+        await this.saveToMongoDB(order, organizationID, 'ARCHIVE', authToken, this.archiveKaspiModel);
+
+      }
+  
+      return fetchedIds;
+    } catch (error) {
+      console.error('Error fetching archive orders:', error.response?.data || error.message);
+      return [];
+    }
+  }
+
+  async getArchiveData(organizationID: string): Promise<any> {
+    return await this.archiveKaspiModel.find({ organizationID }).exec();
+  }
+
+
+
+  
   
   
   
@@ -134,10 +208,10 @@ export class KaspiApiService {
     organizationID: string,
     state: string,
     authToken: string,
+    targetModel: Model<any>, // ✅ new argument
   ) {
     try {
       const orderEntriesUrl = `https://kaspi.kz/shop/api/v2/orders/${order.id}/entries`;
-      // console.log(`📦 Fetching entries for orderId: ${order.id}`);
   
       const entriesResponse = await lastValueFrom(
         this.httpService.get(orderEntriesUrl, {
@@ -150,7 +224,6 @@ export class KaspiApiService {
       );
   
       const entries = entriesResponse.data.data || [];
-      // console.log(`🔍 Entries fetched: ${entries.length} for orderId: ${order.id}`);
   
       const fullOrderData = {
         organizationID,
@@ -163,52 +236,51 @@ export class KaspiApiService {
         data: entries,
       };
   
-      await this.dataKaspiModel.create(fullOrderData);
-      // console.log(`📁 Saved to datakaspis: ${order.id}`);
+      await targetModel.create(fullOrderData); // ✅ use target model
   
-      const sortedData = entries.map((entry) => ({
-        organizationID,
-        statusQS: 'offDelivery',
-        statusFrom: state,
-        orderId: order.id,
-        assemble: order.attributes?.assembled,
-        codeZK: order.attributes?.code || 'N/A',
-        status: order.attributes?.status || 'N/A',
-        code: entry.attributes?.offer?.code || 'N/A',
-        name: entry.attributes?.offer?.name || 'Unknown Product',
-        quantity: entry.attributes?.quantity || 0,
-        totalPrice: entry.attributes?.totalPrice || 0,
-        paymentMode: order.attributes?.paymentMode || 'N/A',
-        originFormattedAddress: order.attributes?.originAddress?.address?.formattedAddress || 'N/A',
-        cityName: order.attributes?.originAddress?.city?.name || 'N/A',
-        plannedDeliveryDate: order.attributes?.plannedDeliveryDate || null,
-        creationDate: order.attributes?.creationDate || null,
-        deliveryFormattedAddress: order.attributes?.deliveryAddress?.formattedAddress || 'N/A',
-        deliveryStreetName: order.attributes?.deliveryAddress?.streetName || 'N/A',
-        deliveryStreetNumber: order.attributes?.deliveryAddress?.streetNumber || 'N/A',
-        deliveryTown: order.attributes?.deliveryAddress?.town || 'N/A',
-        kaspiWaybill: order.attributes?.kaspiDelivery?.waybill || 'N/A',
-        kaspiWaybillNumber: order.attributes?.kaspiDelivery?.waybillNumber || 'N/A',
-        courierTransmissionDate: order.attributes?.kaspiDelivery?.courierTransmissionDate || null,
-        courierTransmissionPlanningDate: order.attributes?.kaspiDelivery?.courierTransmissionPlanningDate || null,
-        customerName: order.attributes?.customer?.name || 'N/A',
-        customerFirstName: order.attributes?.customer?.firstName || 'N/A',
-        customerLastName: order.attributes?.customer?.lastName || 'N/A',
-        customerCellPhone: order.attributes?.customer?.cellPhone || 'N/A',
-        deliveryMode: order.attributes?.deliveryMode || 'N/A',
-        deliveryCost: order.attributes?.deliveryCost || 0,
-      }));
+      if (state !== 'ARCHIVE') {
+        const sortedData = entries.map((entry) => ({
+          organizationID,
+          statusQS: 'offDelivery',
+          statusFrom: state,
+          orderId: order.id,
+          assemble: order.attributes?.assembled,
+          codeZK: order.attributes?.code || 'N/A',
+          status: order.attributes?.status || 'N/A',
+          code: entry.attributes?.offer?.code || 'N/A',
+          name: entry.attributes?.offer?.name || 'Unknown Product',
+          quantity: entry.attributes?.quantity || 0,
+          totalPrice: entry.attributes?.totalPrice || 0,
+          paymentMode: order.attributes?.paymentMode || 'N/A',
+          originFormattedAddress: order.attributes?.originAddress?.address?.formattedAddress || 'N/A',
+          cityName: order.attributes?.originAddress?.city?.name || 'N/A',
+          plannedDeliveryDate: order.attributes?.plannedDeliveryDate || null,
+          creationDate: order.attributes?.creationDate || null,
+          deliveryFormattedAddress: order.attributes?.deliveryAddress?.formattedAddress || 'N/A',
+          deliveryStreetName: order.attributes?.deliveryAddress?.streetName || 'N/A',
+          deliveryStreetNumber: order.attributes?.deliveryAddress?.streetNumber || 'N/A',
+          deliveryTown: order.attributes?.deliveryAddress?.town || 'N/A',
+          kaspiWaybill: order.attributes?.kaspiDelivery?.waybill || 'N/A',
+          kaspiWaybillNumber: order.attributes?.kaspiDelivery?.waybillNumber || 'N/A',
+          courierTransmissionDate: order.attributes?.kaspiDelivery?.courierTransmissionDate || null,
+          courierTransmissionPlanningDate: order.attributes?.kaspiDelivery?.courierTransmissionPlanningDate || null,
+          customerName: order.attributes?.customer?.name || 'N/A',
+          customerFirstName: order.attributes?.customer?.firstName || 'N/A',
+          customerLastName: order.attributes?.customer?.lastName || 'N/A',
+          customerCellPhone: order.attributes?.customer?.cellPhone || 'N/A',
+          deliveryMode: order.attributes?.deliveryMode || 'N/A',
+          deliveryCost: order.attributes?.deliveryCost || 0,
+        }));
   
-      if (sortedData.length > 0) {
-        await this.sortedDataModel.insertMany(sortedData);
-        // console.log(`✅ Inserted ${sortedData.length} sorted entries for orderId: ${order.id}`);
-      } else {
-        console.log(`⚠️ No entries to sort for orderId: ${order.id}`);
+        if (sortedData.length > 0) {
+          await this.sortedDataModel.insertMany(sortedData);
+        }
       }
     } catch (error) {
       console.error(`❌ Error saving order ${order.id}:`, error.message);
     }
   }
+  
   
 
   /**
