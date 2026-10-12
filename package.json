@@ -1,8 +1,8 @@
 {
-  "name": "kaspi-price-adjustment",
+  "name": "quicksell-backend-damping",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "QuickSell v1: automatic price damping for Kaspi.kz sellers",
+  "author": "Ratmir Akimov",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
